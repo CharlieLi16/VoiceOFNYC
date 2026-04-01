@@ -2,7 +2,7 @@
   {
     "id": 0,
     "name": "Danting",
-    "img": "/src/assets/img/image0.jpg",
+    "img": "./assets/img/image0.jpg",
     "song": "水星记",
     "songTwo": "《爱如潮水》",
     "juges": "0",
@@ -15,7 +15,7 @@
   {
     "id": 1,
     "name": "Aurora 四岁",
-    "img": "/src/assets/img/image1.jpg",
+    "img": "./assets/img/image1.jpg",
     "song": "让她降落",
     "songTwo": "《很久很久》",
     "juges": "0",
@@ -28,7 +28,7 @@
   {
     "id": 2,
     "name": "刘佳希",
-    "img": "/src/assets/img/image2.jpg",
+    "img": "./assets/img/image2.jpg",
     "song": "身骑白马",
     "songTwo": "《时间都去哪了》",
     "juges": "0",
@@ -41,7 +41,7 @@
   {
     "id": 3,
     "name": "王梓骏",
-    "img": "/src/assets/img/image3.jpg",
+    "img": "./assets/img/image3.jpg",
     "song": "The Music of the Night",
     "songTwo": "《找自己》",
     "juges": "0",
@@ -54,7 +54,7 @@
   {
     "id": 4,
     "name": "张运骄JoJo",
-    "img": "/src/assets/img/image4.jpg",
+    "img": "./assets/img/image4.jpg",
     "song": "Suffer",
     "songTwo": "《终章》",
     "juges": "0",
@@ -67,7 +67,7 @@
   {
     "id": 5,
     "name": "Sean程嘉禾",
-    "img": "/src/assets/img/image5.jpg",
+    "img": "./assets/img/image5.jpg",
     "song": "Best Part",
     "songTwo": "《Best Part》",
     "juges": "0",
@@ -80,7 +80,7 @@
   {
     "id": 6,
     "name": "Elvin",
-    "img": "/src/assets/img/image6.jpeg",
+    "img": "./assets/img/image6.jpeg",
     "song": "浮夸",
     "songTwo": "《Writings on the wall》",
     "juges": "0",
@@ -93,7 +93,7 @@
   {
     "id": 7,
     "name": "安德烈",
-    "img": "/src/assets/img/image7.jpeg",
+    "img": "./assets/img/image7.jpeg",
     "song": "说唱入门教学",
     "songTwo": "《For Forever》",
     "juges": "0",
@@ -106,7 +106,7 @@
   {
     "id": 8,
     "name": "白子旭",
-    "img": "/src/assets/img/image8.jpeg",
+    "img": "./assets/img/image8.jpeg",
     "song": "When We Were Young",
     "songTwo": "《If I》",
     "juges": "0",
@@ -119,7 +119,7 @@
   {
     "id": 9,
     "name": "吴谦",
-    "img": "/src/assets/img/image9.jpeg",
+    "img": "./assets/img/image9.jpeg",
     "song": "真的爱你",
     "songTwo": "《乌兰巴托的夜》",
     "juges": "0",
