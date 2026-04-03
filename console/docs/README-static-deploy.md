@@ -77,14 +77,15 @@ server {
 
 注意：浏览器会访问你填的 **`VITE_API_BASE`**，FastAPI 必须 **允许该静态站的 Origin**（CORS），且若静态站是 **HTTPS**，后端也建议 **HTTPS** 或同域反代。
 
-#### Vercel（推荐：连 GitHub 后零配置根目录）
+#### Vercel（Root Directory 必须指向前端）
 
-仓库根目录已有 **`vercel.json`**：安装与构建在 `console/frontend`，输出 `console/frontend/dist`，并已配置 SPA 回退到 `index.html`。
+配置在 **`console/frontend/vercel.json`**（Vite、`dist`、SPA 回退）。导入仓库后请在项目里把 **Root Directory** 设为 **`console/frontend`**，否则构建产物路径会对不上，部署后容易出现 **`404 NOT_FOUND`（平台级，带 `Code: NOT_FOUND`）**。
 
-1. [Vercel](https://vercel.com) → New Project → 导入本仓库，**无需**改 Root Directory（保持仓库根即可）。
-2. **Environment Variables** 里添加与 `.env.production` 相同的 `VITE_*`（至少按需填 `VITE_API_BASE`、`VITE_GOOGLE_SHEET_ID`、`VITE_GOOGLE_SHEETS_API_KEY` 及各 `VITE_*_AUDIENCE_RANGE` 等），保存后 Redeploy。
-3. **`VITE_API_BASE`**：填你 **HTTPS** 可访问的 FastAPI 根地址（无尾斜杠）。大屏页 **`/display`** 的 WebSocket 会从该地址推导 `wss://…/ws/display`；若不填则默认连 **当前站点**（Vercel 静态托管上 **没有** 后端 WebSocket，大屏需依赖后端时必须设置此项）。
-4. 若更想用 Vercel 的 **Framework Preset**：把项目的 **Root Directory** 设为 `console/frontend`，构建由平台自动识别 Vite；SPA 回退已写在同目录的 **`vercel.json`**（仅 `rewrites`）。根目录的 `vercel.json` 可删或忽略，避免重复配置。
+1. [Vercel](https://vercel.com) → New Project → 导入本仓库 → **Settings → General → Root Directory** 填 **`console/frontend`** 并保存，再 **Redeploy**。
+2. **Environment Variables** 里添加与 `.env.production` 相同的 `VITE_*`（至少按需填 `VITE_API_BASE`、`VITE_GOOGLE_SHEET_ID`、`VITE_GOOGLE_SHEETS_API_KEY` 等），保存后 Redeploy。
+3. **`VITE_API_BASE`**：填你 **HTTPS** 可访问的 FastAPI 根地址（无尾斜杠）。大屏 **`/display`** 的 WebSocket 会从该地址推导 `wss://…/ws/display`；静态站本身没有后端 WebSocket 时必须设置此项。
+
+**不要**在「仓库根 + Root Directory = `console/frontend`」时再用「输出目录 = `console/frontend/dist`」这类**双重路径**；本仓库已改为只在子目录内使用相对路径 **`dist`**。
 
 ### C. 仅现场局域网：一台电脑当服务器
 
@@ -101,6 +102,7 @@ server {
 
 | 现象 | 原因 |
 |------|------|
+| Vercel 整站 `NOT_FOUND` / `Code: NOT_FOUND` | Root Directory 未设为 **`console/frontend`**，或输出目录配置成了错误的嵌套路径 |
 | 刷新 `/admin` 404 | 静态服务器未做 **SPA fallback** 到 `index.html` |
 | API `Failed to fetch` | 未设 `VITE_API_BASE`、CORS、或 https 页面请求了 http |
 | Google 表读不到 | 未在 build 前配置 `VITE_GOOGLE_*`，或表未对「知道链接的人」只读共享 |
