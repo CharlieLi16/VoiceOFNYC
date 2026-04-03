@@ -22,3 +22,6 @@ key/
 
 # Windows alternate data stream artifacts under WSL
 *Zone.Identifier
+
+# 本机汇总的敏感环境变量文档（勿提交）
+docs/ENVIRONMENT-VALUES.local.md
