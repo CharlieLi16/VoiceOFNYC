@@ -1,0 +1,209 @@
+/* 对齐 score11.html：单组 PK 全屏双柱（嵌在 .stage-page-root 内） */
+
+.r1pk-wrap {
+  min-height: calc(100vh - 3rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  padding: 0 0.5rem 1rem;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+.r1pk-wrap .r1pk-back {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 10;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.r1pk-wrap .r1pk-back:hover {
+  color: #ffcb05;
+}
+
+.r1pk-wrap .r1pk-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5vw;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.r1pk-wrap .r1pk-side {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+  flex: 1;
+  justify-content: center;
+  min-width: 200px;
+}
+
+.r1pk-wrap .r1pk-avatar {
+  width: clamp(64px, 10vw, 140px);
+  height: clamp(64px, 10vw, 140px);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid white;
+  background: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.r1pk-wrap div.r1pk-avatar {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.06));
+}
+
+.r1pk-wrap .r1pk-name {
+  font-family: "ZCOOL XiaoWei", sans-serif;
+  font-size: clamp(1.1rem, 4.5vw, 2.5rem);
+  color: white;
+  font-weight: 700;
+}
+
+.r1pk-wrap .r1pk-name--right {
+  text-align: right;
+}
+
+.r1pk-wrap .r1pk-name--left {
+  text-align: left;
+}
+
+.r1pk-wrap .r1pk-pk {
+  font-family: "Trade Winds", system-ui;
+  font-size: clamp(2rem, 6vw, 4rem);
+  color: white;
+  flex-shrink: 0;
+}
+
+.r1pk-wrap .bar-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 40vh;
+  position: relative;
+  margin: 0 auto;
+  width: min(90vw, 720px);
+  perspective: 3000px;
+  transform-style: preserve-3d;
+}
+
+.r1pk-wrap .bar {
+  width: clamp(72px, 12vw, 100px);
+  position: relative;
+  transform: rotateY(-20deg);
+  transform-origin: center;
+  transition: height 2s ease;
+  margin: 0 clamp(16px, 4vw, 40px);
+}
+
+.r1pk-wrap .bar-front {
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+}
+
+.r1pk-wrap .bar-side {
+  height: 100%;
+  width: 40px;
+  position: absolute;
+  right: -40px;
+  top: -20px;
+  transform: skewY(-45deg);
+  transform-origin: top;
+  z-index: 2;
+}
+
+.r1pk-wrap .bar-top {
+  height: 40px;
+  width: 100%;
+  position: absolute;
+  top: -40px;
+  transform: skewX(-45deg);
+  transform-origin: bottom;
+  z-index: 1;
+}
+
+.r1pk-wrap .percentage-container {
+  display: flex;
+  justify-content: space-around;
+  width: min(90vw, 720px);
+  margin: 20px auto 0;
+}
+
+.r1pk-wrap .percentage-text {
+  font-size: clamp(1.5rem, 5vw, 3rem);
+  font-weight: bold;
+  color: white;
+  font-family: "Trade Winds", system-ui;
+  transition: all 2s ease;
+}
+
+.r1pk-wrap #r1pk-bar1 .bar-front {
+  background: #ff4444;
+}
+.r1pk-wrap #r1pk-bar1 .bar-side {
+  background: #cc0000;
+}
+.r1pk-wrap #r1pk-bar1 .bar-top {
+  background: #ff6666;
+}
+
+.r1pk-wrap #r1pk-bar2 .bar-front {
+  background: #2196f3;
+}
+.r1pk-wrap #r1pk-bar2 .bar-side {
+  background: #1565c0;
+}
+.r1pk-wrap #r1pk-bar2 .bar-top {
+  background: #42a5f5;
+}
+
+.r1pk-wrap .r1pk-pair-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.r1pk-wrap .r1pk-pair-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.r1pk-wrap .r1pk-pair-nav a:hover,
+.r1pk-wrap .r1pk-pair-nav a.active {
+  background: rgba(255, 203, 5, 0.25);
+  border-color: #ffcb05;
+  color: #ffcb05;
+}
+
+.r1pk-wrap .r1pk-banner {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(180, 50, 70, 0.4);
+  font-size: 0.85rem;
+}
+
+.r1pk-wrap .bar-front,
+.r1pk-wrap .bar-side,
+.r1pk-wrap .bar-top {
+  transition: all 2s ease;
+}

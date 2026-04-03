@@ -1,0 +1,48 @@
+rules_version = '2';
+
+/**
+ * 与 public/vote 写入字段一致；部署前核对 eventId / choiceId / sheetRow 白名单。
+ * voteCode：明文；进表规则见 Cloud Function（Secret 内联码或 Firestore tickets）。
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isVoteShape() {
+      return request.resource.data.keys().hasOnly([
+        'choiceId',
+        'sheetRow',
+        'label',
+        'createdAt',
+        'source',
+        'voteCode',
+      ])
+        && request.resource.data.choiceId is string
+        && request.resource.data.sheetRow is int
+        && request.resource.data.label is string
+        && request.resource.data.label.size() > 0
+        && request.resource.data.label.size() < 200
+        && request.resource.data.source == 'vote-static-page'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.voteCode is string
+        && request.resource.data.voteCode.size() >= 0
+        && request.resource.data.voteCode.size() <= 96;
+    }
+
+    match /events/{eventId}/votes/{voteId} {
+      allow read: if false;
+
+      allow create: if
+        eventId == 'voiceofnyc-revival'
+        && isVoteShape()
+        && request.resource.data.choiceId in ['s1', 's2', 's3', 's4', 's5']
+        && request.resource.data.sheetRow in [2, 3, 4, 5, 6];
+
+      allow update, delete: if false;
+    }
+
+    /** 票码仅后台/脚本与 Admin SDK 写入；观众端不可读写 */
+    match /events/{eventId}/tickets/{code} {
+      allow read, write: if false;
+    }
+  }
+}

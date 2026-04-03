@@ -1,0 +1,289 @@
+/* 现场大屏：与仓库 background1.png 统一 */
+
+.stage-page-root {
+  min-height: 100vh;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  background-color: #0a0614;
+  background-image: url("/img/background1.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: #f3f0ff;
+  box-sizing: border-box;
+}
+
+.stage-page-root .stage-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.stage-page-root .stage-back:hover {
+  color: #ffcb05;
+}
+
+.stage-title {
+  font-family: "Ma Shan Zheng", "Noto Serif SC", serif;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  text-align: center;
+  margin: 0 0 0.5rem;
+  background: linear-gradient(180deg, #fff 0%, #ffcb05 50%, #e91e8c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
+}
+
+.stage-sub {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 1.5rem;
+  font-size: 0.95rem;
+}
+
+.stage-banner {
+  max-width: 40rem;
+  margin: 0 auto 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  background: rgba(180, 50, 70, 0.35);
+  border: 1px solid rgba(255, 120, 140, 0.35);
+  font-size: 0.88rem;
+}
+
+.audience-poll-section {
+  max-width: 1100px;
+  margin: 0 auto 2rem;
+  padding: 1.25rem 1.5rem;
+  background: rgba(8, 6, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+}
+
+.audience-poll-title {
+  font-family: "Noto Serif SC", serif;
+  font-size: 1.25rem;
+  text-align: center;
+  margin: 0 0 1.25rem;
+  color: #fff;
+  letter-spacing: 0.06em;
+}
+
+.audience-pairs-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem 1.75rem;
+}
+
+.audience-pair-block {
+  flex: 1 1 160px;
+  min-width: 140px;
+  max-width: 200px;
+}
+
+.audience-pair-label {
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 0.5rem;
+}
+
+.audience-dual-bars {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 1rem;
+  height: 140px;
+  perspective: 800px;
+}
+
+.ap-bar {
+  width: 56px;
+  position: relative;
+  transform: rotateY(-18deg);
+  transform-origin: center bottom;
+  transition: height 0.8s ease;
+}
+
+.ap-bar-front {
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 3;
+  border-radius: 4px 4px 0 0;
+}
+
+.ap-bar-side {
+  width: 22px;
+  height: 100%;
+  position: absolute;
+  right: -22px;
+  bottom: 0;
+  transform: skewY(-42deg);
+  transform-origin: bottom left;
+  z-index: 2;
+  border-radius: 0 4px 0 0;
+}
+
+.ap-bar-top {
+  height: 22px;
+  width: 100%;
+  position: absolute;
+  top: -22px;
+  left: 0;
+  transform: skewX(-42deg);
+  transform-origin: bottom left;
+  z-index: 1;
+}
+
+.ap-bar .ap-pct {
+  position: absolute;
+  top: -1.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 4px #000;
+  white-space: nowrap;
+}
+
+.ap-pair .ap-bar--a .ap-bar-front {
+  background: linear-gradient(180deg, #42a5f5, #1565c0);
+}
+.ap-pair .ap-bar--a .ap-bar-side {
+  background: #0d47a1;
+}
+.ap-pair .ap-bar--a .ap-bar-top {
+  background: #64b5f6;
+}
+
+.ap-pair .ap-bar--b .ap-bar-front {
+  background: linear-gradient(180deg, #ff6b6b, #c62828);
+}
+.ap-pair .ap-bar--b .ap-bar-side {
+  background: #8b0000;
+}
+.ap-pair .ap-bar--b .ap-bar-top {
+  background: #ff8a80;
+}
+
+.audience-multi-wrap {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.audience-multi-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.65rem 1rem;
+  min-height: 160px;
+  padding: 0.5rem;
+}
+
+.audience-multi-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 76px;
+  flex: 0 0 auto;
+}
+
+.audience-multi-column {
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.audience-multi-item .ap-bar {
+  width: 44px;
+  min-height: 4px;
+}
+
+.audience-multi-item .ap-bar--multi .ap-bar-front {
+  background: linear-gradient(180deg, #ab47bc, #6a1b9a);
+}
+.audience-multi-item .ap-bar--multi .ap-bar-side {
+  background: #4a148c;
+}
+.audience-multi-item .ap-bar--multi .ap-bar-top {
+  background: #ce93d8;
+}
+
+.audience-multi-item:nth-child(6n + 2) .ap-bar--multi .ap-bar-front {
+  background: linear-gradient(180deg, #26c6da, #00838f);
+}
+.audience-multi-item:nth-child(6n + 2) .ap-bar--multi .ap-bar-side {
+  background: #006064;
+}
+.audience-multi-item:nth-child(6n + 2) .ap-bar--multi .ap-bar-top {
+  background: #4dd0e1;
+}
+
+.audience-multi-item:nth-child(6n + 3) .ap-bar--multi .ap-bar-front {
+  background: linear-gradient(180deg, #ffca28, #f57f17);
+}
+.audience-multi-item:nth-child(6n + 3) .ap-bar--multi .ap-bar-side {
+  background: #e65100;
+}
+.audience-multi-item:nth-child(6n + 3) .ap-bar--multi .ap-bar-top {
+  background: #ffe082;
+}
+
+.audience-multi-item:nth-child(6n + 4) .ap-bar--multi .ap-bar-front {
+  background: linear-gradient(180deg, #66bb6a, #2e7d32);
+}
+.audience-multi-item:nth-child(6n + 4) .ap-bar--multi .ap-bar-side {
+  background: #1b5e20;
+}
+.audience-multi-item:nth-child(6n + 4) .ap-bar--multi .ap-bar-top {
+  background: #a5d6a7;
+}
+
+.audience-multi-item:nth-child(6n + 5) .ap-bar--multi .ap-bar-front {
+  background: linear-gradient(180deg, #ef5350, #c62828);
+}
+.audience-multi-item:nth-child(6n + 5) .ap-bar--multi .ap-bar-side {
+  background: #8b0000;
+}
+.audience-multi-item:nth-child(6n + 5) .ap-bar--multi .ap-bar-top {
+  background: #ffcdd2;
+}
+
+.audience-multi-item:nth-child(6n) .ap-bar--multi .ap-bar-front {
+  background: linear-gradient(180deg, #7e57c2, #4527a0);
+}
+.audience-multi-item:nth-child(6n) .ap-bar--multi .ap-bar-side {
+  background: #311b92;
+}
+.audience-multi-item:nth-child(6n) .ap-bar--multi .ap-bar-top {
+  background: #b39ddb;
+}
+
+.audience-multi-name {
+  margin-top: 0.5rem;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.88);
+  text-align: center;
+  max-width: 72px;
+  line-height: 1.25;
+  word-break: break-all;
+}
+
+.audience-multi-pct {
+  font-size: 0.7rem;
+  color: #ffcb05;
+  margin-top: 0.15rem;
+}

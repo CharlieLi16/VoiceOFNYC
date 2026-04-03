@@ -1,0 +1,122 @@
+/* 总决赛揭晓：对齐根目录 final.html 布局与奖牌色 */
+
+.fr-root {
+  text-align: center;
+  padding: clamp(0.5rem, 2vh, 1.5rem) 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.fr-back {
+  align-self: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.fr-title {
+  color: #fff;
+  font-family: "Trade Winds", cursive;
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin: 0 0 clamp(1rem, 3vh, 2rem);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
+}
+
+.fr-sub {
+  margin: -0.75rem 0 1.25rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.72);
+  max-width: 42rem;
+  line-height: 1.5;
+}
+
+.fr-banner {
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: rgba(180, 40, 60, 0.35);
+  border: 1px solid rgba(255, 120, 140, 0.4);
+  color: #ffeef0;
+  font-size: 0.9rem;
+}
+
+.fr-contestants {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 90vw;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.fr-contestant {
+  display: inline-block;
+  margin: 2vh 30px;
+  text-align: center;
+  width: calc(33.33% - 60px);
+  min-width: 160px;
+  transition: all 0.5s ease-in-out;
+}
+
+.fr-avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 3px solid #ccc;
+  margin: 0 auto 15px;
+  object-fit: cover;
+  display: block;
+}
+
+.fr-name {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  color: #fff;
+  font-family: "ZCOOL XiaoWei", serif;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  word-wrap: break-word;
+}
+
+.fr-score {
+  font-size: 50px;
+  color: #fff;
+  font-family: "Trade Winds", cursive;
+  margin-top: 15px;
+  line-height: 1.1;
+}
+
+.fr-contestant--gold .fr-score {
+  color: #ffd700;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+}
+
+.fr-contestant--gold .fr-name {
+  color: #ffd700;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+}
+
+.fr-contestant--silver .fr-score {
+  color: #e8e8e8;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+}
+
+.fr-contestant--silver .fr-name {
+  color: #e8e8e8;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+}
+
+.fr-contestant--bronze .fr-score {
+  color: #77a8a8;
+  text-shadow: 0 0 10px rgba(119, 168, 168, 0.6);
+}
+
+.fr-contestant--bronze .fr-name {
+  color: #77a8a8;
+  text-shadow: 0 0 10px rgba(119, 168, 168, 0.6);
+}

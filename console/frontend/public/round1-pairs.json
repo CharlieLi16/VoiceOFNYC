@@ -1,0 +1,32 @@
+[
+  {
+    "leftName": "Danting",
+    "rightName": "Aurora 四岁",
+    "leftImg": "/img/contestants/1.jpg",
+    "rightImg": "/img/contestants/2.jpg"
+  },
+  {
+    "leftName": "刘佳希",
+    "rightName": "王梓骏",
+    "leftImg": "/img/contestants/3.jpg",
+    "rightImg": "/img/contestants/4.jpg"
+  },
+  {
+    "leftName": "张运骄JoJo",
+    "rightName": "Sean程嘉禾",
+    "leftImg": "/img/contestants/5.jpg",
+    "rightImg": "/img/contestants/6.jpg"
+  },
+  {
+    "leftName": "Elvin",
+    "rightName": "安德烈",
+    "leftImg": "/img/contestants/7.jpg",
+    "rightImg": "/img/contestants/8.jpg"
+  },
+  {
+    "leftName": "白子旭",
+    "rightName": "吴谦",
+    "leftImg": "/img/contestants/9.jpg",
+    "rightImg": "/img/contestants/10.jpg"
+  }
+]

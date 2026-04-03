@@ -1,1 +1,20 @@
+# 本仓库在 Git 中只跟踪 console/；其余目录留在本机即可
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/console/
+
 **/.DS_Store
+node_modules/
+.venv/
+venv/
+**/__pycache__/
+*.pyc
+dist/
+
+.env
+.env.local
+**/.env.*.local
+
+**/*firebase-adminsdk*.json

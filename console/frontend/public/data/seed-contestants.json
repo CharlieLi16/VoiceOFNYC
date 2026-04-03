@@ -1,0 +1,112 @@
+[
+  {
+    "id": 0,
+    "name": "Danting",
+    "img": "/img/contestants/1.jpg",
+    "song": "水星记",
+    "songTwo": "《爱如潮水》",
+    "judges": "0",
+    "audience": "0",
+    "total": "0",
+    "ranking": 0
+  },
+  {
+    "id": 1,
+    "name": "Aurora 四岁",
+    "img": "/img/contestants/2.jpg",
+    "song": "让她降落",
+    "songTwo": "《很久很久》",
+    "judges": "0",
+    "audience": "0",
+    "total": "0",
+    "ranking": 1
+  },
+  {
+    "id": 2,
+    "name": "刘佳希",
+    "img": "/img/contestants/3.jpg",
+    "song": "身骑白马",
+    "songTwo": "《时间都去哪了》",
+    "judges": "0",
+    "audience": "0",
+    "total": "0",
+    "ranking": 2
+  },
+  {
+    "id": 3,
+    "name": "王梓骏",
+    "img": "/img/contestants/4.jpg",
+    "song": "The Music of the Night",
+    "songTwo": "《找自己》",
+    "judges": "0",
+    "audience": "0",
+    "total": "0",
+    "ranking": 3
+  },
+  {
+    "id": 4,
+    "name": "张运骄JoJo",
+    "img": "/img/contestants/5.jpg",
+    "song": "Suffer",
+    "songTwo": "《终章》",
+    "judges": "0",
+    "audience": "0",
+    "total": "0",
+    "ranking": 4
+  },
+  {
+    "id": 5,
+    "name": "Sean程嘉禾",
+    "img": "/img/contestants/6.jpg",
+    "song": "Best Part",
+    "songTwo": "《Best Part》",
+    "judges": "0",
+    "audience": "0",
+    "total": "0",
+    "ranking": 5
+  },
+  {
+    "id": 6,
+    "name": "Elvin",
+    "img": "/img/contestants/7.jpg",
+    "song": "浮夸",
+    "songTwo": "《Writings on the wall》",
+    "judges": "0",
+    "audience": "0",
+    "total": "0",
+    "ranking": 6
+  },
+  {
+    "id": 7,
+    "name": "安德烈",
+    "img": "/img/contestants/8.jpg",
+    "song": "说唱入门教学",
+    "songTwo": "《For Forever》",
+    "judges": "0",
+    "audience": "0",
+    "total": "0",
+    "ranking": 7
+  },
+  {
+    "id": 8,
+    "name": "白子旭",
+    "img": "/img/contestants/9.jpg",
+    "song": "When We Were Young",
+    "songTwo": "《If I》",
+    "judges": "0",
+    "audience": "0",
+    "total": "0",
+    "ranking": 8
+  },
+  {
+    "id": 9,
+    "name": "吴谦",
+    "img": "/img/contestants/10.jpg",
+    "song": "真的爱你",
+    "songTwo": "《乌兰巴托的夜》",
+    "judges": "0",
+    "audience": "0",
+    "total": "0",
+    "ranking": 9
+  }
+]
