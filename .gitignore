@@ -3,6 +3,7 @@
 !/.gitignore
 !/.gitattributes
 !/README.md
+!/vercel.json
 !/console/
 
 **/.DS_Store

@@ -70,12 +70,21 @@ server {
 
 ### B. Cloudflare Pages / GitHub Pages / Vercel / Netlify
 
-- **构建命令**：`cd frontend && npm install && npm run build`
-- **发布目录**：`frontend/dist`
+- **构建命令**：`cd console/frontend && npm install && npm run build`
+- **发布目录**：`console/frontend/dist`
 - **环境变量**：在平台后台填与上文相同的 `VITE_*`，再触发构建。
 - **SPA**：在平台里打开 “Single Page App” / 重写规则：**全部 → `/index.html`**。
 
 注意：浏览器会访问你填的 **`VITE_API_BASE`**，FastAPI 必须 **允许该静态站的 Origin**（CORS），且若静态站是 **HTTPS**，后端也建议 **HTTPS** 或同域反代。
+
+#### Vercel（推荐：连 GitHub 后零配置根目录）
+
+仓库根目录已有 **`vercel.json`**：安装与构建在 `console/frontend`，输出 `console/frontend/dist`，并已配置 SPA 回退到 `index.html`。
+
+1. [Vercel](https://vercel.com) → New Project → 导入本仓库，**无需**改 Root Directory（保持仓库根即可）。
+2. **Environment Variables** 里添加与 `.env.production` 相同的 `VITE_*`（至少按需填 `VITE_API_BASE`、`VITE_GOOGLE_SHEET_ID`、`VITE_GOOGLE_SHEETS_API_KEY` 及各 `VITE_*_AUDIENCE_RANGE` 等），保存后 Redeploy。
+3. **`VITE_API_BASE`**：填你 **HTTPS** 可访问的 FastAPI 根地址（无尾斜杠）。大屏页 **`/display`** 的 WebSocket 会从该地址推导 `wss://…/ws/display`；若不填则默认连 **当前站点**（Vercel 静态托管上 **没有** 后端 WebSocket，大屏需依赖后端时必须设置此项）。
+4. 若更想用 Vercel 的 **Framework Preset**：把项目的 **Root Directory** 设为 `console/frontend`，构建由平台自动识别 Vite；SPA 回退已写在同目录的 **`vercel.json`**（仅 `rewrites`）。根目录的 `vercel.json` 可删或忽略，避免重复配置。
 
 ### C. 仅现场局域网：一台电脑当服务器
 
