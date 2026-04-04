@@ -3,6 +3,7 @@
  * forwardVoteToSheet：兼容旧版前端直接 addDoc（source=vote-static-page）
  *
  * VOTE_CODES：DISABLED | __TICKETS__ | 内联逗号/换行列表（见 parseInlineCodes）
+ * __TICKETS__ 时：Callable 须传 roundId（ALLOWED_ROUND_IDS）；Firestore tickets 用 usedRounds[roundId] 按轮扣次。
  */
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
@@ -21,13 +22,35 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-/** 与 firestore.rules / vote-config 一致时可收紧 */
+/** 与 docs 中「每轮一票」约定一致；换轮改 voteRoundId 并重新部署投票页 */
+const ALLOWED_ROUND_IDS = new Set([
+  "round1_pk_1",
+  "round1_pk_2",
+  "round1_pk_3",
+  "round1_pk_4",
+  "round1_pk_5",
+  "round2_revival",
+  "final_perf_1",
+  "final_perf_2",
+  "final_perf_3",
+  "final_perf_4",
+  "final_perf_5",
+  "final_perf_6",
+]);
+
+function assertAllowedRoundId(roundId) {
+  if (!roundId || !ALLOWED_ROUND_IDS.has(roundId)) {
+    throw new HttpsError("invalid-argument", "无效或不允许的投票轮次 roundId。");
+  }
+}
+
+/** 与 firestore.rules / vote-config 一致时可收紧；含决赛第 6 人（s6 / 第 7 行） */
 function assertAllowedVote(eventId, choiceId, sheetRow) {
   if (eventId !== "voiceofnyc-revival") {
     throw new HttpsError("invalid-argument", "不支持的活动。");
   }
-  const allowedChoice = new Set(["s1", "s2", "s3", "s4", "s5"]);
-  const allowedRow = new Set([2, 3, 4, 5, 6]);
+  const allowedChoice = new Set(["s1", "s2", "s3", "s4", "s5", "s6"]);
+  const allowedRow = new Set([2, 3, 4, 5, 6, 7]);
   if (!allowedChoice.has(choiceId) || !allowedRow.has(sheetRow)) {
     throw new HttpsError("invalid-argument", "选手数据无效。");
   }
@@ -46,9 +69,13 @@ function parseInlineCodes(raw) {
   );
 }
 
-async function tryConsumeTicket(eventId, rawCode, voteId) {
+/**
+ * Firestore __TICKETS__：同一码在每个 roundId 下各可用一次。旧数据仅有 used:true 且无 usedRounds 时视为已耗尽（旧版全局一次）。
+ */
+async function tryConsumeTicket(eventId, rawCode, voteId, roundId) {
   const code = String(rawCode || "").trim().toUpperCase();
-  if (!code) return false;
+  const rid = String(roundId || "").trim();
+  if (!code || !rid) return false;
   const db = admin.firestore();
   const ref = db.collection("events").doc(eventId).collection("tickets").doc(code);
   try {
@@ -58,13 +85,20 @@ async function tryConsumeTicket(eventId, rawCode, voteId) {
         throw new Error("no_ticket");
       }
       const data = doc.data() || {};
-      if (data.used === true) {
-        throw new Error("already_used");
+      const usedRounds = data.usedRounds && typeof data.usedRounds === "object" ? data.usedRounds : {};
+      if (usedRounds[rid] === true) {
+        throw new Error("already_used_round");
       }
+      if (data.used === true && Object.keys(usedRounds).length === 0) {
+        throw new Error("already_used_legacy");
+      }
+      const nextRounds = { ...usedRounds, [rid]: true };
       t.update(ref, {
         used: true,
+        usedRounds: nextRounds,
         usedAt: admin.firestore.FieldValue.serverTimestamp(),
-        voteId,
+        lastRoundId: rid,
+        lastVoteId: voteId,
       });
     });
     return true;
@@ -74,7 +108,7 @@ async function tryConsumeTicket(eventId, rawCode, voteId) {
   }
 }
 
-async function voteCodeAllowsSheet(eventId, submitted, voteId, secretRaw) {
+async function voteCodeAllowsSheet(eventId, submitted, voteId, secretRaw, roundId) {
   const inline = parseInlineCodes(secretRaw);
   if (inline === null) {
     return true;
@@ -83,7 +117,7 @@ async function voteCodeAllowsSheet(eventId, submitted, voteId, secretRaw) {
   if (inline.size > 0) {
     return inline.has(s);
   }
-  return tryConsumeTicket(eventId, s, voteId);
+  return tryConsumeTicket(eventId, s, voteId, roundId);
 }
 
 /**
@@ -149,12 +183,19 @@ exports.submitVote = onCall(
 
     const voteId = `call-${crypto.randomUUID()}`;
     const voteCode = voteCodeRaw.trim().toUpperCase();
+    const inline = parseInlineCodes(voteCodesSecret.value());
+    const needsTicketRound = inline && inline.size === 0;
+    const roundId = String(data.roundId || "").trim();
+    if (needsTicketRound) {
+      assertAllowedRoundId(roundId);
+    }
 
     const okCode = await voteCodeAllowsSheet(
       eventId,
       voteCode,
       voteId,
-      voteCodesSecret.value()
+      voteCodesSecret.value(),
+      roundId
     );
     if (!okCode) {
       throw new HttpsError("invalid-argument", "投票码无效或已使用。");
@@ -181,6 +222,7 @@ exports.submitVote = onCall(
         sheetRow,
         label,
         voteCode,
+        roundId: roundId || "",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         source: "vote-callable",
         clientSheetUncertain: sheetResult.ambiguous === true,
@@ -214,11 +256,18 @@ exports.forwardVoteToSheet = onDocumentCreated(
 
     const eventId = event.params.eventId;
     const voteId = event.params.voteId;
+    const roundId = String(d.roundId || "").trim();
+    const inline = parseInlineCodes(voteCodesSecret.value());
+    if (inline && inline.size === 0 && !ALLOWED_ROUND_IDS.has(roundId)) {
+      console.warn("skip vote: roundId missing or not allowed for __TICKETS__");
+      return;
+    }
     const okCode = await voteCodeAllowsSheet(
       eventId,
       d.voteCode,
       voteId,
-      voteCodesSecret.value()
+      voteCodesSecret.value(),
+      roundId
     );
     if (!okCode) {
       console.warn("skip vote: voteCode rejected (sheet unchanged)");

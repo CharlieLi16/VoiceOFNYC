@@ -2,7 +2,7 @@ rules_version = '2';
 
 /**
  * 与 public/vote 写入字段一致；部署前核对 eventId / choiceId / sheetRow 白名单。
- * voteCode：明文；进表规则见 Cloud Function（Secret 内联码或 Firestore tickets）。
+ * voteCode:明文进；表规则见 Cloud Function(Secret 内联码或 Firestore tickets)。
  */
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -15,6 +15,7 @@ service cloud.firestore {
         'createdAt',
         'source',
         'voteCode',
+        'roundId',
       ])
         && request.resource.data.choiceId is string
         && request.resource.data.sheetRow is int
@@ -25,7 +26,15 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.voteCode is string
         && request.resource.data.voteCode.size() >= 0
-        && request.resource.data.voteCode.size() <= 96;
+        && request.resource.data.voteCode.size() <= 96
+        && request.resource.data.roundId is string
+        && request.resource.data.roundId.size() > 0
+        && request.resource.data.roundId.size() < 64
+        && request.resource.data.roundId in [
+          'round1_pk_1', 'round1_pk_2', 'round1_pk_3', 'round1_pk_4', 'round1_pk_5',
+          'round2_revival',
+          'final_perf_1', 'final_perf_2', 'final_perf_3', 'final_perf_4', 'final_perf_5', 'final_perf_6'
+        ];
     }
 
     match /events/{eventId}/votes/{voteId} {
@@ -34,8 +43,8 @@ service cloud.firestore {
       allow create: if
         eventId == 'voiceofnyc-revival'
         && isVoteShape()
-        && request.resource.data.choiceId in ['s1', 's2', 's3', 's4', 's5']
-        && request.resource.data.sheetRow in [2, 3, 4, 5, 6];
+        && request.resource.data.choiceId in ['s1', 's2', 's3', 's4', 's5', 's6']
+        && request.resource.data.sheetRow in [2, 3, 4, 5, 6, 7];
 
       allow update, delete: if false;
     }

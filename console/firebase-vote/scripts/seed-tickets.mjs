@@ -108,7 +108,7 @@ async function main() {
     console.log(`已写入 Firestore ${Math.min(i + batchSize, list.length)} / ${list.length}`);
   }
 
-  console.log("完成。CSV 在 console/firebase-vote/data/；Cloud Function 会在首次有效投票后将对应票标记为 used。");
+  console.log("完成。CSV 在 console/firebase-vote/data/；Cloud Function 在 __TICKETS__ 模式下按 voteRoundId 写入 tickets.usedRounds。");
 }
 
 main().catch((e) => {

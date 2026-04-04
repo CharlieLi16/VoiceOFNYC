@@ -5,6 +5,11 @@
 window.__VOTE_PAGE_CONFIG = {
   /** Firestore 里用于分区投票；Cloud Function 可按 eventId 过滤 */
   eventId: "voiceofnyc-revival",
+  /**
+   * 当前这一页对应的投票轮次（与 Cloud Function 白名单一致）。换环节时改此值并重新 build 部署。
+   * 例：round1_pk_1～5、round2_revival、final_perf_1～6
+   */
+  voteRoundId: "round2_revival",
   firebase: {
     apiKey: "AIzaSyDvzMnypwlgztNNPG_T6BJbbQ-FzzGp9MU",
     authDomain: "voiceofnyc-e8f3b.firebaseapp.com",

@@ -32,7 +32,8 @@ function validFirebase(fb) {
 }
 
 function storageKey() {
-  return `vp_voted_${cfg?.eventId ?? "default"}`;
+  const rid = String(cfg?.voteRoundId ?? "").trim() || "unset";
+  return `vp_voted_${cfg?.eventId ?? "default"}_${rid}`;
 }
 
 /** 将 FirebaseError / Functions 错误转成用户可读文案 */
@@ -59,6 +60,12 @@ function init() {
 
   if (!validFirebase(cfg.firebase)) {
     showBanner("请先在 vote-config.js 中填写 Firebase 配置（apiKey、projectId 等）。");
+    submitBtn.disabled = true;
+    return;
+  }
+
+  if (!String(cfg.voteRoundId || "").trim()) {
+    showBanner("请在 vote-config.js 中设置 voteRoundId（当前投票轮次，见 console/docs/README-vote-firebase-static.md）。");
     submitBtn.disabled = true;
     return;
   }
@@ -160,6 +167,7 @@ function init() {
           sheetRow: selected.sheetRow,
           label: selected.label,
           voteCode,
+          roundId: String(cfg.voteRoundId).trim(),
         });
         if (shouldLockBrowser()) localStorage.setItem(storageKey(), "1");
         if (data?.sheetUncertain) {
