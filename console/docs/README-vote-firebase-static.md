@@ -57,7 +57,7 @@ localStorage 按 **`eventId` + 实际 roundId** 区分环节。
 ## 选手与行号
 
 - **复活 / 决赛** 等多人选：`submitVote` 仍只允许 **`s1`～`s6`**、**`sheetRow` 2～7**（与 `Round2Audience` 六行一致）。
-- **`publishVoteUi`**：允许 **`s1`～`s10`**、**`sheetRow` 2～11**（便于初赛十人五组在后台发布占位行号；与写表行号无必然对应，初赛写表只看 `roundId` → `pairRow`）。
+- **`publishVoteUi`**：允许 **`s1`～`s10`**、**`sheetRow` 2～11**。初赛两人若对应 **Round1 同一数据行（B/C）**，允许 **两行号相同**（须为 2～6 且整份 candidates 恰好 2 人）。复活/决赛等多人发布仍须行号互不相同。
 - 大屏 lineup 仍在主站 **`/admin`**。
 
 ### 初赛 PK（`round1_pk_1`～`round1_pk_5`）

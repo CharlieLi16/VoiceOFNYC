@@ -13,12 +13,12 @@ window.__VOTE_PAGE_CONFIG = {
   },
   /**
    * 可选：初赛五组固定 1v2、3v4…（round1_pk_* 时 vote.html 优先于此，覆盖 Firestore candidates）。
-   * 每人 id s1～s10；sheetRow 用 2～11 占位且同组不重复即可（写表仍由 roundId → pairRow）。
+   * 同组两人 sheetRow 相同 = Round1Audience 该对数据行（2～6）；写表仍由 roundId + pairSide。
    */
   round1PkByRoundId: {
     round1_pk_1: [
       { id: "s1", sheetRow: 2, label: "选手 1", img: "/img/contestants/1.jpg" },
-      { id: "s2", sheetRow: 3, label: "选手 2", img: "/img/contestants/2.jpg" },
+      { id: "s2", sheetRow: 2, label: "选手 2", img: "/img/contestants/2.jpg" },
     ],
   },
   /**

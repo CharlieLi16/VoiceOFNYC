@@ -49,13 +49,13 @@ function validFirebase(fb) {
   );
 }
 
-/** 链接 ?roundId=xxx 优先，便于 PPT 放不同 URL 切环节；否则用 vote-config.js */
+/** 链接 ?roundId=xxx 优先；与 Cloud Function 一致统一小写，避免初赛未被识别而走 sheetRow 分支报「选手行号无效」 */
 function resolveVoteRoundId() {
   const q = new URLSearchParams(window.location.search).get("roundId");
   const fromUrl = q != null ? String(q).trim() : "";
   const fromCfg = String(cfg?.voteRoundId ?? "").trim();
-  if (fromUrl) return fromUrl;
-  return fromCfg;
+  const raw = fromUrl || fromCfg;
+  return raw ? raw.toLowerCase() : "";
 }
 
 function storageKeyFor(roundId) {
@@ -65,7 +65,7 @@ function storageKeyFor(roundId) {
 
 /** 初赛 1v1：round1_pk_1～5 对应表 Round1Audience 第 2～6 行 */
 function isRound1PkRound(roundId) {
-  return /^round1_pk_[1-5]$/.test(String(roundId || "").trim());
+  return /^round1_pk_[1-5]$/.test(String(roundId || "").trim().toLowerCase());
 }
 
 /** 将 FirebaseError / Functions 错误转成用户可读文案 */
@@ -331,10 +331,22 @@ async function init() {
           voteCode,
           roundId: resolvedRoundId,
         };
-        if (selected.pairSide === "left" || selected.pairSide === "right") {
-          payload.pairSide = selected.pairSide;
+        if (round1Pk) {
+          const ps = selected.pairSide;
+          if (ps !== "left" && ps !== "right") {
+            showBanner("请选择左侧或右侧选手后再提交。");
+            submitBtn.disabled = false;
+            return;
+          }
+          payload.pairSide = ps;
         } else {
-          payload.sheetRow = selected.sheetRow;
+          const sr = Number(selected.sheetRow);
+          if (!Number.isInteger(sr) || sr < 2) {
+            showBanner("选手行号配置无效，请检查 vote-config / 后台发布。");
+            submitBtn.disabled = false;
+            return;
+          }
+          payload.sheetRow = sr;
         }
         const { data } = await submitVoteFn(payload);
         if (shouldLockBrowser()) localStorage.setItem(storageKeyFor(resolvedRoundId), "1");

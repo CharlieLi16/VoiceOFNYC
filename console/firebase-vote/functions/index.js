@@ -45,9 +45,9 @@ function assertAllowedRoundId(roundId) {
   }
 }
 
-/** round1_pk_1 → 表数据行 2 … round1_pk_5 → 行 6；非初赛返回 null */
+/** round1_pk_1 → 表数据行 2 … round1_pk_5 → 行 6；非初赛返回 null（roundId 会先 trim + lower） */
 function pairRowFromRound1PkRoundId(roundId) {
-  const m = /^round1_pk_([1-5])$/.exec(String(roundId || "").trim());
+  const m = /^round1_pk_([1-5])$/.exec(String(roundId || "").trim().toLowerCase());
   if (!m) return null;
   const n = parseInt(m[1], 10);
   if (!Number.isInteger(n) || n < 1 || n > 5) return null;
@@ -109,7 +109,18 @@ function validateCandidatesForPublish(arr) {
       throw new HttpsError("invalid-argument", `无效的 sheetRow：${c.sheetRow}`);
     }
     if (seenRow.has(sheetRow)) {
-      throw new HttpsError("invalid-argument", "sheetRow 重复。");
+      /** 初赛两人同占 Round1Audience 一行（B/C），允许同一 sheetRow 两次，且仅 2 人、行 2～6 */
+      const dupOkRound1Pair =
+        arr.length === 2 &&
+        out.length === 1 &&
+        out[0].sheetRow === sheetRow &&
+        sheetRow >= 2 &&
+        sheetRow <= 6;
+      if (!dupOkRound1Pair) {
+        throw new HttpsError("invalid-argument", "sheetRow 重复。");
+      }
+    } else {
+      seenRow.add(sheetRow);
     }
     if (label.length < 1 || label.length > 120) {
       throw new HttpsError("invalid-argument", "label 长度须在 1～120。");
@@ -118,7 +129,6 @@ function validateCandidatesForPublish(arr) {
       throw new HttpsError("invalid-argument", "img 路径过长。");
     }
     seenId.add(id);
-    seenRow.add(sheetRow);
     out.push({ id, sheetRow, label, img });
   }
   return out;
@@ -334,8 +344,8 @@ exports.submitVote = onCall(
     const sheetRow = Number(data.sheetRow);
     const label = String(data.label || "").trim();
     const voteCodeRaw = data.voteCode != null ? String(data.voteCode) : "";
-    const roundId = String(data.roundId || "").trim();
-    const pairRow = pairRowFromRound1PkRoundId(roundId);
+    const roundIdNorm = String(data.roundId || "").trim().toLowerCase();
+    const pairRow = pairRowFromRound1PkRoundId(roundIdNorm);
     const pairSideRaw = String(data.pairSide || "").trim().toLowerCase();
     const isRound1Pair = pairRow != null;
 
@@ -360,7 +370,7 @@ exports.submitVote = onCall(
     const inline = parseInlineCodes(voteCodesSecret.value());
     const needsTicketRound = inline && inline.size === 0;
     if (needsTicketRound) {
-      assertAllowedRoundId(roundId);
+      assertAllowedRoundId(roundIdNorm);
     }
 
     const okCode = await voteCodeAllowsSheet(
@@ -368,7 +378,7 @@ exports.submitVote = onCall(
       voteCode,
       voteId,
       voteCodesSecret.value(),
-      roundId
+      roundIdNorm
     );
     if (!okCode) {
       throw new HttpsError("invalid-argument", "投票码无效或已使用。");
@@ -394,7 +404,7 @@ exports.submitVote = onCall(
       choiceId,
       label,
       voteCode,
-      roundId: roundId || "",
+      roundId: roundIdNorm || "",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       source: "vote-callable",
       clientSheetUncertain: sheetResult.ambiguous === true,

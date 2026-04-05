@@ -20,28 +20,28 @@ window.__VOTE_PAGE_CONFIG = {
   /**
    * 初赛五组固定对阵（与大屏 /img 1～10、Round1Audience 第 2～6 行五对 PK 一致）。
    * vote.html 在 round1_pk_1～5 时优先用这里两人，覆盖 Firestore voteUi.candidates。
-   * 左=较小号码选手，右=较大号码；表写入仍由 roundId → pairRow（第 2～6 行）+ left/right。
+   * 左=较小号码、右=较大号码。**sheetRow 填该组在表上的数据行（2～6），两人相同**（左 B 列 / 右 C 列）；写票只认 roundId+pairSide。
    */
   round1PkByRoundId: {
     round1_pk_1: [
       { id: "s1", sheetRow: 2, label: "选手 1", img: "/img/contestants/1.jpg" },
-      { id: "s2", sheetRow: 3, label: "选手 2", img: "/img/contestants/2.jpg" },
+      { id: "s2", sheetRow: 2, label: "选手 2", img: "/img/contestants/2.jpg" },
     ],
     round1_pk_2: [
-      { id: "s3", sheetRow: 4, label: "选手 3", img: "/img/contestants/3.jpg" },
-      { id: "s4", sheetRow: 5, label: "选手 4", img: "/img/contestants/4.jpg" },
+      { id: "s3", sheetRow: 3, label: "选手 3", img: "/img/contestants/3.jpg" },
+      { id: "s4", sheetRow: 3, label: "选手 4", img: "/img/contestants/4.jpg" },
     ],
     round1_pk_3: [
-      { id: "s5", sheetRow: 6, label: "选手 5", img: "/img/contestants/5.jpg" },
-      { id: "s6", sheetRow: 7, label: "选手 6", img: "/img/contestants/6.jpg" },
+      { id: "s5", sheetRow: 4, label: "选手 5", img: "/img/contestants/5.jpg" },
+      { id: "s6", sheetRow: 4, label: "选手 6", img: "/img/contestants/6.jpg" },
     ],
     round1_pk_4: [
-      { id: "s7", sheetRow: 8, label: "选手 7", img: "/img/contestants/7.jpg" },
-      { id: "s8", sheetRow: 9, label: "选手 8", img: "/img/contestants/8.jpg" },
+      { id: "s7", sheetRow: 5, label: "选手 7", img: "/img/contestants/7.jpg" },
+      { id: "s8", sheetRow: 5, label: "选手 8", img: "/img/contestants/8.jpg" },
     ],
     round1_pk_5: [
-      { id: "s9", sheetRow: 10, label: "选手 9", img: "/img/contestants/9.jpg" },
-      { id: "s10", sheetRow: 11, label: "选手 10", img: "/img/contestants/10.jpg" },
+      { id: "s9", sheetRow: 6, label: "选手 9", img: "/img/contestants/9.jpg" },
+      { id: "s10", sheetRow: 6, label: "选手 10", img: "/img/contestants/10.jpg" },
     ],
   },
   /**
