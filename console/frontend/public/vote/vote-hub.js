@@ -393,7 +393,7 @@ async function main() {
         rounds,
       });
       showMsg("已写入 Firestore（按环节 rounds）。请让观众刷新 vote 页。", true);
-    } catch (e) {
+      } catch (e) {
       console.error(e);
       const msg = e?.message || String(e);
       showMsg(msg.replace(/^.*?:\s*/, "") || "发布失败", false);
