@@ -11,8 +11,14 @@ export default function MainLayout() {
         <NavLink to="/" end className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
           入口
         </NavLink>
-        <NavLink to="/admin" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
+        <NavLink to="/admin" end className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
           控分后台
+        </NavLink>
+        <NavLink
+          to="/admin/contestants-editor"
+          className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
+        >
+          选手资料
         </NavLink>
         <NavLink to="/display" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
           大屏

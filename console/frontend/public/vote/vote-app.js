@@ -104,6 +104,19 @@ function isRound1PkRound(roundId) {
   return /^round1_pk_[1-5]$/.test(normalizeVoteRoundId(roundId));
 }
 
+/** 决赛第 N 唱：final_perf_1～6，与 Cloud Functions isFinalPerfRoundId 一致 */
+function isFinalPerfRoundIdClient(roundId) {
+  return /^final_perf_[1-6]$/.test(normalizeVoteRoundId(roundId));
+}
+
+/** final_perf_n → Round3 表数据行号 n+1（第 1 唱 → 第 2 行） */
+function finalPerfSheetRowFromRoundId(roundId) {
+  const m = /^final_perf_([1-6])$/.exec(normalizeVoteRoundId(roundId));
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return Number.isInteger(n) && n >= 1 && n <= 6 ? n + 1 : null;
+}
+
 /** 本机 Vite 开发：避免线上 Firestore voteUi（复活 6 人、旧 sheetRow）覆盖本地 vote-config，导致初赛 UI/行号错乱 */
 function isLocalVoteHost() {
   try {
@@ -287,6 +300,25 @@ async function init() {
     return;
   }
 
+  const isFinalPerf = isFinalPerfRoundIdClient(resolvedRoundId);
+  let finalPerfSolo = null;
+  if (isFinalPerf) {
+    const wantRow = finalPerfSheetRowFromRoundId(resolvedRoundId);
+    finalPerfSolo =
+      wantRow != null
+        ? displayCfg.candidates.find((c) => Number(c.sheetRow) === wantRow)
+        : null;
+    if (!finalPerfSolo && displayCfg.candidates.length) {
+      finalPerfSolo = displayCfg.candidates[0];
+      console.warn("[vote] final_perf: no candidate for sheetRow", wantRow, "— using first candidate");
+    }
+    if (!finalPerfSolo) {
+      showBanner("决赛环节未配置选手（vote-config 或 Firestore voteUi）。");
+      submitBtn.disabled = true;
+      return;
+    }
+  }
+
   /** 初赛默认副标题：仅当当前未从 voteUi（按环节或旧版全局）写入副标题时 */
   if (round1Pk && subEl) {
     const hasSub = Boolean(subEl.textContent && subEl.textContent.trim());
@@ -295,6 +327,16 @@ async function init() {
       subEl.innerHTML = "";
       subEl.textContent =
         "Voice of NYC · 初赛 PK（1v1）\n左右点选支持的一位，再按下方确认投票（每人限一次）";
+    }
+  }
+
+  if (isFinalPerf && subEl) {
+    const hasSub = Boolean(subEl.textContent && subEl.textContent.trim());
+    if (!hasSub) {
+      subEl.style.whiteSpace = "pre-line";
+      subEl.innerHTML = "";
+      subEl.textContent =
+        "决赛打分 · 拖动右侧竖条选择 1～10 分，再确认提交（每人限一次）";
     }
   }
 
@@ -338,7 +380,12 @@ async function init() {
   function syncSubmitEnabled() {
     const needCode = displayCfg.requireVoteCode !== false;
     const codeOk = !needCode || (codeInput && codeInput.value.trim().length > 0);
-    submitBtn.disabled = !selected || !codeOk;
+    let selOk = Boolean(selected);
+    if (isFinalPerf && selected) {
+      const s = selected.audienceScore;
+      selOk = Number.isInteger(s) && s >= 1 && s <= 10;
+    }
+    submitBtn.disabled = !selOk || !codeOk;
   }
 
   codeInput?.addEventListener("input", syncSubmitEnabled, { passive: true });
@@ -398,6 +445,67 @@ async function init() {
     vs.textContent = "VS";
     pairWrap.append(makePkCard(leftC, "left"), vs, makePkCard(rightC, "right"));
     frag.appendChild(pairWrap);
+  } else if (isFinalPerf && finalPerfSolo) {
+    document.getElementById("vp-root")?.classList.add("vp-root--final");
+    gridEl.classList.add("vp-grid--final");
+
+    const row = document.createElement("div");
+    row.className = "vp-final-row";
+
+    const photo = document.createElement("div");
+    photo.className = "vp-final-photo";
+    const img = document.createElement("img");
+    img.className = "vp-final-photo__img";
+    img.src = finalPerfSolo.img || "";
+    img.alt = "";
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.onerror = () => {
+      const ph = document.createElement("div");
+      ph.className = "vp-final-photo__img vp-final-photo__img--ph";
+      img.replaceWith(ph);
+    };
+    const nameEl = document.createElement("div");
+    nameEl.className = "vp-final-photo__name";
+    nameEl.textContent = finalPerfSolo.label || "选手";
+    photo.append(img, nameEl);
+
+    const scoreAside = document.createElement("aside");
+    scoreAside.className = "vp-final-score";
+    scoreAside.setAttribute("aria-label", "打分");
+    const valOut = document.createElement("output");
+    valOut.className = "vp-final-score__value";
+    valOut.setAttribute("for", "vp-final-range");
+    valOut.textContent = "—";
+    const range = document.createElement("input");
+    range.type = "range";
+    range.id = "vp-final-range";
+    range.className = "vp-final-range";
+    range.min = "1";
+    range.max = "10";
+    range.step = "1";
+    range.value = "5";
+    range.addEventListener(
+      "input",
+      () => {
+        const v = Number(range.value);
+        valOut.textContent = String(v);
+        selected = { ...finalPerfSolo, audienceScore: v };
+        syncSubmitEnabled();
+      },
+      { passive: true }
+    );
+    const rangeWrap = document.createElement("div");
+    rangeWrap.className = "vp-final-range-wrap";
+    rangeWrap.appendChild(range);
+    const hint = document.createElement("p");
+    hint.className = "vp-final-score__hint";
+    hint.textContent = "1–10 分";
+    scoreAside.append(valOut, rangeWrap, hint);
+
+    row.append(photo, scoreAside);
+    frag.appendChild(row);
+    selected = null;
   } else {
     for (const c of displayCfg.candidates) {
       const btn = document.createElement("button");
@@ -478,6 +586,15 @@ async function init() {
             return;
           }
           payload.sheetRow = sr;
+          if (isFinalPerfRoundIdClient(resolvedRoundId)) {
+            const sc = selected.audienceScore;
+            if (!Number.isInteger(sc) || sc < 1 || sc > 10) {
+              showBanner("请先在右侧拖动选择 1～10 分。");
+              submitBtn.disabled = false;
+              return;
+            }
+            payload.audienceScore = sc;
+          }
         }
         const { data } = await submitVoteFn(payload);
         if (shouldLockBrowser()) localStorage.setItem(storageKeyFor(resolvedRoundId), "1");
@@ -486,7 +603,11 @@ async function init() {
         } else {
           showBanner("投票成功，感谢参与！", true);
         }
-        showDone(displayCfg, selected.label, Boolean(data?.sheetUncertain));
+        const doneLabel =
+          isFinalPerfRoundIdClient(resolvedRoundId) && typeof selected.audienceScore === "number"
+            ? `${selected.label}（${selected.audienceScore} 分）`
+            : selected.label;
+        showDone(displayCfg, doneLabel, Boolean(data?.sheetUncertain));
       } catch (e) {
         console.error(e);
         showBanner(humanizeVoteError(e));

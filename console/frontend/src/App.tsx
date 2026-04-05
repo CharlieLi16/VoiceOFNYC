@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import StageLayout from "./layouts/StageLayout";
 import Admin from "./pages/Admin";
+import ContestantSeedEditor from "./pages/ContestantSeedEditor";
 import Display from "./pages/Display";
 import Home from "./pages/Home";
 import FinalRevealStage from "./pages/stage/FinalRevealStage";
@@ -21,6 +22,7 @@ export default function App() {
       <Route element={<MainLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/contestants-editor" element={<ContestantSeedEditor />} />
         <Route path="/display" element={<Display />} />
       </Route>
     </Routes>

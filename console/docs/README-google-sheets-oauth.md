@@ -2,7 +2,7 @@
 
 用 **你自己的 Google 账号** 授权一次后，FastAPI 把 **refresh token** 存在 `backend/data/google_oauth_token.json`，之后可自动刷新 **access token** 并调用 Sheets API **写入**（无需把表格设为全网公开，只要该账号对表格有编辑权限即可）。
 
-与 [`scripts/google-apps-script/vote-ingest.gs`](../scripts/google-apps-script/vote-ingest.gs) 写入的同一张表、同一布局（`Round1Audience` / `Round2Audience`）。
+与 [`scripts/google-apps-script/vote-ingest.gs`](../scripts/google-apps-script/vote-ingest.gs) 写入的同一张表、同一布局（`Round1Audience` / `Round2Audience` / **`Round3Audience`** 决赛打分）。
 
 ## 1. Google Cloud Console
 
@@ -34,7 +34,7 @@ cp .env.example .env
 | `GOOGLE_OAUTH_CLIENT_SECRET` | OAuth 客户端密钥 |
 | `GOOGLE_OAUTH_REDIRECT_URI` | 默认与上节重定向 URI 一致 |
 
-可选：`GOOGLE_SHEET_ROUND1_TAB`、`GOOGLE_SHEET_ROUND2_TAB`（默认 `Round1Audience` / `Round2Audience`）。
+可选：`GOOGLE_SHEET_ROUND1_TAB`、`GOOGLE_SHEET_ROUND2_TAB`、`GOOGLE_SHEET_ROUND3_TAB`（默认 `Round1Audience` / `Round2Audience` / `Round3Audience`）。
 
 ## 3. 安装依赖并启动后端
 
@@ -65,6 +65,9 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8765
 | POST | `/api/sheets/round1-votes` | JSON：`{ "pair": 1-5, "left": 票数, "right": 票数 }` → 对应 `Round1Audience` 第 `pair+1` 行 |
 | POST | `/api/sheets/round2-votes` | JSON：`{ "row": 2-7, "votes": 票数 }` → `Round2Audience` 的 B 列 |
 | POST | `/api/sheets/round2-name` | JSON：`{ "row": 2-7, "name": "姓名" }` → A 列 |
+| POST | `/api/sheets/round3-score` | JSON：`{ "row": 2-7, "score": 8.2 }` → **B**（会**覆盖**「观众均分」公式；新表请用 **H/I** + 投票页或 **`addRound3AudienceScore`**） |
+| POST | `/api/sheets/round3-judge` | JSON：`{ "row": 2-7, "judge": 1, "score": 8.5 }`（`judge` 为 1、2 或 3）→ **C / D / E** |
+| POST | `/api/sheets/round3-name` | JSON：`{ "row": 2-7, "name": "姓名" }` → **A** 列 |
 
 可在 **http://127.0.0.1:8765/docs** 里试调。
 

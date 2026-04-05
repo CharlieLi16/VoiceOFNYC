@@ -308,6 +308,82 @@ async function postAddFinalVoteToSheet(row, url, ingestSecretStr) {
   return { ok: true, ambiguous: true };
 }
 
+/** 决赛轮次：写入 Round3Audience（与前端 final-reveal、vote-ingest addRound3Vote 一致） */
+function isFinalPerfRoundId(rid) {
+  return /^final_perf_[1-6]$/.test(normalizeClientRoundId(rid));
+}
+
+async function postAddRound3VoteToSheet(row, url, ingestSecretStr) {
+  const payload = {
+    action: "addRound3Vote",
+    row,
+    delta: 1,
+  };
+  if (ingestSecretStr) payload.secret = ingestSecretStr;
+
+  const res = await fetch(url, {
+    method: "POST",
+    redirect: "follow",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  const trimmed = text.trim();
+  let parsed = null;
+  if (trimmed.startsWith("{")) {
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  if (parsed && parsed.ok === false) {
+    return { error: String(parsed.error || "写入 Round3 被拒绝") };
+  }
+  if (parsed && parsed.ok === true) {
+    return { ok: true };
+  }
+  return { ok: true, ambiguous: true };
+}
+
+/** 决赛投票页：1–10 分 → Round3 H/I 累计，B 为公式均分 */
+async function postAddRound3AudienceScoreToSheet(row, score, url, ingestSecretStr) {
+  const payload = {
+    action: "addRound3AudienceScore",
+    row,
+    score,
+  };
+  if (ingestSecretStr) payload.secret = ingestSecretStr;
+
+  const res = await fetch(url, {
+    method: "POST",
+    redirect: "follow",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  const trimmed = text.trim();
+  let parsed = null;
+  if (trimmed.startsWith("{")) {
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  if (parsed && parsed.ok === false) {
+    return { error: String(parsed.error || "写入 Round3 观众分被拒绝") };
+  }
+  if (parsed && parsed.ok === true) {
+    return { ok: true };
+  }
+  return { ok: true, ambiguous: true };
+}
+
 /**
  * Round1Audience：观众左 B 列 / 右 C 列累加（见 vote-ingest.gs addPairVote）
  * @returns {Promise<{ ok: true, ambiguous?: boolean } | { error: string }>}
@@ -477,6 +553,15 @@ exports.submitVote = onCall(
         );
       }
       assertAllowedVote(eventId, choiceId, sheetRow);
+      if (isFinalPerfRoundId(roundIdNorm)) {
+        const as = Number(data.audienceScore);
+        if (!Number.isInteger(as) || as < 1 || as > 10) {
+          throw new HttpsError(
+            "invalid-argument",
+            "决赛须提交 audienceScore（1～10 的整数）。"
+          );
+        }
+      }
     }
 
     const voteId = `call-${crypto.randomUUID()}`;
@@ -507,6 +592,13 @@ exports.submitVote = onCall(
     let sheetResult;
     if (isRound1Pair) {
       sheetResult = await postAddPairVoteToSheet(pairRow, pairSideRaw, url, sec);
+    } else if (isFinalPerfRoundId(roundIdNorm)) {
+      sheetResult = await postAddRound3AudienceScoreToSheet(
+        sheetRow,
+        Number(data.audienceScore),
+        url,
+        sec
+      );
     } else {
       sheetResult = await postAddFinalVoteToSheet(sheetRow, url, sec);
     }
@@ -530,6 +622,9 @@ exports.submitVote = onCall(
       votePayload.sheetRow = pairRow;
     } else {
       votePayload.sheetRow = sheetRow;
+      if (isFinalPerfRoundId(roundIdNorm)) {
+        votePayload.audienceScore = Number(data.audienceScore);
+      }
     }
 
     await admin.firestore().collection("events").doc(eventId).collection("votes").add(votePayload);
@@ -587,7 +682,18 @@ exports.forwardVoteToSheet = onDocumentCreated(
     }
 
     const sec = (voteIngestSecret.value() || "").trim();
-    const sheetResult = await postAddFinalVoteToSheet(row, url, sec);
+    const useRound3 = isFinalPerfRoundId(roundId);
+    const asStatic = Number(d.audienceScore);
+    let sheetResult;
+    if (useRound3) {
+      if (Number.isInteger(asStatic) && asStatic >= 1 && asStatic <= 10) {
+        sheetResult = await postAddRound3AudienceScoreToSheet(row, asStatic, url, sec);
+      } else {
+        sheetResult = await postAddRound3VoteToSheet(row, url, sec);
+      }
+    } else {
+      sheetResult = await postAddFinalVoteToSheet(row, url, sec);
+    }
     if (sheetResult.error) {
       console.error("vote-ingest rejected", sheetResult.error);
       throw new Error(`vote-ingest: ${sheetResult.error}`);

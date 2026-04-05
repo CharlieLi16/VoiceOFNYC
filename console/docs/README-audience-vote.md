@@ -2,13 +2,13 @@
 
 ## 一键初始化（推荐）：在表格里跑 Apps Script
 
-我无法代你登录 Google，但你可以 **30 秒内在本表内自动生成两个 Tab 和初始格子**：
+我无法代你登录 Google，但你可以 **30 秒内在本表内自动生成三个 Tab 和初始格子**：
 
 1. 用浏览器打开你的 **[比赛分数 / 目标表格](https://docs.google.com/spreadsheets)**。
 2. **扩展程序** → **Apps Script**。
 3. 删除默认的 `function myFunction() {}`，把仓库里 **[`scripts/google-apps-script/setup-audience-sheets.gs`](../scripts/google-apps-script/setup-audience-sheets.gs)** 的**全部内容**粘贴进去 → **保存**（磁盘图标）。
 4. 上方函数下拉选 **`setupVoiceOfNYCConsoleSheets`** → 点 **运行**。首次需 **审查权限** → 选你的 Google 账号 → **高级** → **前往…（不安全）** → **允许**（这是你自己写的脚本，仅改当前表）。
-5. 回到表格刷新：应出现 **`Round1Audience`**、**`Round2Audience`**，且数据区已写好。之后菜单栏会出现 **VoiceOfNYC 控制台** → 同一功能可重复执行（**会覆盖** Round1 的 **A1:E6** 与 Round2 的 **A1:B7**，有旧数据请先备份）。
+5. 回到表格刷新：应出现 **`Round1Audience`**、**`Round2Audience`**、**`Round3Audience`**，且数据区已写好。之后菜单栏会出现 **VoiceOfNYC 控制台** → 同一功能可重复执行（**会覆盖** Round1 **A1:E6**、Round2 **A1:B7**、Round3 **A1:I7**，有旧数据请先备份）。
 
 然后再做：**共享** → 知道链接的任何人 **查看者**（前端 API Key 才能读）。
 
@@ -19,21 +19,24 @@
 1. **打开你的表格**（或新建一个），记下 URL 里 `/d/` 与 `/edit` 之间的 **表格 ID**，填入 `frontend/.env.local` 的 `VITE_GOOGLE_SHEET_ID`。
 2. **共享（API Key 读表必需）**  
    点 **共享** → 将访问权限设为 **知道链接的任何人** → **查看者**（或「互联网上知道链接的任何人」）。仅自己可见时，浏览器用 API Key 读不到。
-3. **新建两个工作表（底部 Tab）**，名称必须**完全一致**（区分大小写）：  
-   - `Round1Audience`  
-   - `Round2Audience`  
+3. **新建工作表（底部 Tab）**，名称必须**完全一致**（区分大小写）：  
+   - `Round1Audience`（初赛 PK）  
+   - `Round2Audience`（复活投票 · 票数）  
+   - `Round3Audience`（**决赛打分** · 总分，供 `/stage/final-reveal` 默认读取）  
    若你想用中文 Tab 名，改 **`frontend/src/config/audienceSheetRanges.ts`** 里的默认范围字符串（例如 `你的Tab名!A2:E6`）。
 4. **导入模板（可选）**  
    在对应 Tab 里：**文件 → 导入 → 上传**，选择本仓库内：  
    - [`sheet-templates/Round1Audience.csv`](sheet-templates/Round1Audience.csv)  
    - [`sheet-templates/Round2Audience.csv`](sheet-templates/Round2Audience.csv)  
+   - [`sheet-templates/Round3Audience.csv`](sheet-templates/Round3Audience.csv)  
    每个 CSV 导入到**对应名称**的 Tab；导入位置选 **替换当前工作表** 或粘贴到 A1。  
    - Round1：第 1 行为表头，**数据占用 A2:E6**（5 行 = 第一轮～第五轮 PK），与默认 `Round1Audience!A2:E6` 一致。  
-   - Round2：第 1 行为表头，**数据占用 A2:B7**（6 人），与默认 `Round2Audience!A2:B7` 一致。
-5. **揭晓页单独表（可选）**  
-   `/stage/final-reveal` 默认与 **`/stage/round2`（复活投票）** 读同一张 `Round2Audience`（`round2AudienceRange`）。若揭晓要单独 Tab，新建例如 `FinalAudience`，在 **`frontend/src/config/audienceSheetRanges.ts`** 里把 `DEFAULT_FINAL_AUDIENCE_RANGE` 改成 `FinalAudience!A2:B7`（`finalAudienceRange` 优先生效）。
+   - Round2：第 1 行为表头，**数据占用 A2:B7**（6 人），与默认 `Round2Audience!A2:B7` 一致。  
+   - Round3：第 1 行为表头，**数据区 `A2:I7`**：`B` 观众均分（公式 **=H/I**），`C–E` 评委，`F/G` 公式，`H` 观众打分累计、`I` 观众投票人次（**`vote.html` 决赛提交 1–10 分**由 ingest 写入）。与默认 `Round3Audience!A2:I7` 一致。
+5. **揭晓页读哪张表**  
+   `/stage/final-reveal` **默认读 `Round3Audience!A2:I7`**（与复活 `Round2` 分离）。排序与揭晓以 **G 列最终分**为准。若要改范围或 Tab，在 **`audienceSheetRanges.ts`** 或 **`VITE_FINAL_AUDIENCE_RANGE`** 覆盖。
 6. **本地验证**  
-   `cd frontend && npm run dev`，打开 `/stage/round1/1` 与 `/stage/round2`，改表格里票数保存后，应在轮询间隔内（默认 15s）更新。
+   `cd frontend && npm run dev`，打开 `/stage/round1/1`、`/stage/round2` 与 `/stage/final-reveal`，改对应 Tab 保存后，应在轮询间隔内（默认 5s）更新。
 
 ---
 
@@ -41,7 +44,8 @@
 
 - `/stage/round1/1` … `/stage/round1/5` — **每一组单独一页**，布局对齐根目录 `score11.html`（双 3D 柱 + 头图/姓名 + PK）。`/stage/round1` 会重定向到 `/stage/round1/1`。键盘 **1–5** 切换组别。
 - `/stage/round2` — **复活投票（五人制）**：按票数排序的声量柱；表与 lineup 取 **前 5 行 / 前 5 槽**。**揭晓流程**（每次 <kbd>空格</kbd>）：①按当下名次揭晓 **后三名**（身份+票）；② **前两名**只显示 **百分比与票数**（纯黑头、`???`）；③前两名 **身份一起揭晓**（按选手 id 记忆，换位后已揭身份仍显示）；④对 **当前第一名** **复活高亮**。揭晓过程中票数变化仍会 **实时换位** 与上升动效，仅控制是否显示姓名/头像。**R** 重置。旧链接 **`/stage/final`** 会重定向到本页。
-- `/stage/final-reveal` — 总决赛 **总分揭晓**（对齐根目录 `final.html` / `final.js`）：**B 列按小数总分**显示为 `x.xx/10`，**空格**按表行顺序 1→6 逐个揭晓 → 再按分数排序并套金/银/铜（并列规则同旧版 `highlightWinner`）→ 再按空格仅保留前三名；**R** 重置。数据范围：`finalAudienceRange`，缺省同 `round2AudienceRange`；头像与姓名与 `/stage/round2` 一致（`GET /api/stage/round2-lineup` 或 `/stage/round2/*.json`）。
+- `/stage/final-reveal` — 总决赛 **总分揭晓**：**最终分**（**G** 列或 0.6×评委+0.4×观众）显示为 `x.xx/10`，揭晓后附 **观众均分 / 评委均分**；**空格**逐个揭晓 → 再排序发奖 → 再仅保留前三；**R** 重置。默认 **`Round3Audience!A2:I7`**；lineup 仍同 **`/stage/round2`**。
+- **`/vote/vote.html?roundId=final_perf_1`～`final_perf_6`** — 决赛 **单人照 + 竖向 1～10 分条**，提交后 Cloud Function 调 **`addRound3AudienceScore`** 写 **H/I**，**B** 为均分公式。
 
 ## 配置放哪
 
@@ -105,10 +109,25 @@
 
 - `A2:B7`：6 行，`A` 姓名，`B` 票数；柱高为占本表总票比例。
 
+### Round3Audience（决赛打分 · 表结构）
+
+- **用途**：与复活 **Round2** 分离；`/stage/final-reveal` 轮询 **`Round3Audience!A2:I7`**。
+- **列**：`A` 姓名 · `B` **观众均分**（公式 `=IF(I=0,"",ROUND(H/I,4))`）· `C/D/E` 评委 · `F/G` 公式 · **`H` 观众打分累计** · **`I` 观众投票人次**。
+- **人工改评委分**：改 `C–E`；**勿手改 `B`**（公式列）。若需手改观众结果可改 **H/I** 或清人后重投。
+- **Firebase `submitVote`（`vote.html` 决赛）**：`final_perf_*` 传 **`audienceScore` 1～10** → Web App **`addRound3AudienceScore`**（`H+=score`，`I+=1`）。旧客户端无分数时仍走 **`addRound3Vote`**（`H+=delta`，`I+=1`，`delta` 默认 1）。
+
+### 决赛投票页上线顺序（避免「提交了但表没列」）
+
+1. 在 Google 表运行 **`setupVoiceOfNYCConsoleSheets`**（或手建 **H/I** 与 **B** 公式，与脚本一致）。  
+2. 部署 / 更新绑定该表的 **`vote-ingest.gs`** Web App（含 **`addRound3AudienceScore`**）。  
+3. 部署 **Cloud Functions**（`submitVote` 决赛分支）。  
+4. 部署静态资源 **`vote-app.js` / `vote.css`**。  
+5. 若使用 **Firestore 直写** `vote-static-page`，需部署更新后的 **`firestore.rules`**（可选字段 **`audienceScore`**）。
+
 ## 自动化写入
 
-- **观众扫码投票（Google 表单或自研页）**：步骤与脚本示例见 **[`README-google-vote-forms.md`](README-google-vote-forms.md)**（表单提交 → 累加 `Round2Audience`/`Round1Audience`；或 Web App `addFinalVote` / `addPairVote`）。
+- **观众扫码投票（Google 表单或自研页）**：步骤与脚本示例见 **[`README-google-vote-forms.md`](README-google-vote-forms.md)**（表单提交 → 累加 `Round2Audience`/`Round1Audience`；决赛见 **`addRound3AudienceScore`** / `addRound3Vote`；或 Web App `addFinalVote` / `addPairVote`）。
 - **Google 表单** 也可仅用公式汇总到上述 Tab（不实时累加时）；实时 **`B` 列 +1** 推荐用该文档里的 **`form-submit-to-round2.gs` 触发器**。
-- 可选 HTTP 写入：见 [`scripts/google-apps-script/vote-ingest.gs`](../scripts/google-apps-script/vote-ingest.gs)。`setPair` 写 **绝对值**；`addPairVote` / `addFinalVote` 为 **累加**（见上文档）。`setPair` 在新表上写 **B～E 列**（不写 A 列组次）：默认 `part: "audience"` 时 `side` 为左/`A` 写 B、右/`B` 写 C；`part: "judge"` 时左写 D、右写 E。也可传 `column` 为 `2`～`5` 指定列号。
+- 可选 HTTP 写入：见 [`scripts/google-apps-script/vote-ingest.gs`](../scripts/google-apps-script/vote-ingest.gs)。**`addRound3AudienceScore`** `{row,score:1-10}` → **H/I**；**`addRound3Vote`** `{row,delta?}` → **H/I**；**`setRound3Judge`** → **C/D/E**；**`setRound3Name`** → **A**；**`setRound3Score`** 直接写 **B**（会**覆盖**观众均分公式，仅应急）。
 
-- **后端 OAuth**：`POST /api/sheets/round1-votes` 写整行 **B:E**；若不传 `judge_left` / `judge_right` 会从表中读出原评委格再与新的观众票一起写回（见 [`README-google-sheets-oauth.md`](README-google-sheets-oauth.md)）。
+- **后端 OAuth**：`round3-score` 写 **B**（慎用，易破坏公式）；**`round3-judge`** → **C/D/E**；**`round3-name`** → **A**（见 [`README-google-sheets-oauth.md`](README-google-sheets-oauth.md)）。

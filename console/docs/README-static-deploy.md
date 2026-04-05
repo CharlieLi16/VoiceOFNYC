@@ -85,12 +85,36 @@ server {
 2. **Environment Variables** 里添加与 `.env.production` 相同的 `VITE_*`（至少按需填 `VITE_API_BASE`、`VITE_GOOGLE_SHEET_ID`、`VITE_GOOGLE_SHEETS_API_KEY` 等），保存后 Redeploy。
 3. **`VITE_API_BASE`**：填你 **HTTPS** 可访问的 FastAPI 根地址（无尾斜杠）。大屏 **`/display`** 的 WebSocket 会从该地址推导 `wss://…/ws/display`；静态站本身没有后端 WebSocket 时必须设置此项。
 
+4. **后端 CORS（本地能开、Vercel 报 `Failed to fetch` 时最常见原因）**：默认 FastAPI 只允许 `localhost` / `127.0.0.1` 开发端口。部署在公网的后端须在运行环境里增加：
+   - **`CORS_EXTRA_ORIGINS`**：逗号分隔，例如 `https://你的项目.vercel.app`（生产域名）；若有 Preview 分支，把 `https://xxx-git-yyy-team.vercel.app` 一并写上，或
+   - **`CORS_ALLOW_ORIGIN_REGEX`**：例如 `https://.*\.vercel\.app`（匹配所有 Vercel 子域，按需使用）。
+   配置写在 **`console/backend/.env`**（与 `GOOGLE_*` 同级），重启 uvicorn 后生效。详见 **`console/backend/.env.example`**。
+
+5. **混合内容**：Vercel 页面是 **HTTPS** 时，`VITE_API_BASE` 也必须是 **`https://`**，否则浏览器会拦截对 `http://` API 的请求。
+
 **不要**在「仓库根 + Root Directory = `console/frontend`」时再用「输出目录 = `console/frontend/dist`」这类**双重路径**；本仓库已改为只在子目录内使用相对路径 **`dist`**。
 
 ### C. 仅现场局域网：一台电脑当服务器
 
 1. 后端：`uvicorn` `--host 0.0.0.0 --port 8765`。
 2. 用 Nginx/Caddy 在 **80/443** 上托管 `dist`，并反代 `/api` 到 `8765`，或 `VITE_API_BASE=http://那台电脑局域网IP:8765`（**HTTP 仅适合全站 HTTP**，否则手机浏览器可能拦截）。
+
+### D. 会场：Vercel 托管前端 + 笔记本只跑 uvicorn（隧道）
+
+**不能**指望「Vercel 直连你电脑」：打开 Vercel 页面的是**观众手机/自己的浏览器**，请求 `VITE_API_BASE` 也是从**这些设备**发出。你笔记本上的 `http://127.0.0.1:8765` 在观众手机里指的是**手机自己**，不是你的电脑。
+
+同时，Vercel 是 **HTTPS**，若把 `VITE_API_BASE` 设成会场 **`http://192.168.x.x:8765`**，浏览器通常会 **拦截混合内容**（HTTPS 页请求 HTTP），仍不可用。
+
+**可行做法**：在笔记本上让 **`8765` 经隧道暴露成一个公网 HTTPS 地址**，再把该地址填进 Vercel 的 **`VITE_API_BASE`**，并已在后端配置 **`CORS_EXTRA_ORIGINS`** / **`CORS_ALLOW_ORIGIN_REGEX`**（见上文 B.4）。
+
+1. **笔记本**：照常 `uvicorn` 监听 `0.0.0.0:8765`（或只本机 + 隧道指向本机端口，按隧道文档）。
+2. **隧道**（任选其一，均需你先注册/安装）：
+   - **Cloudflare Tunnel（cloudflared）**：可配置**固定子域**（需 Cloudflare 托管的域名）或快速试用域名；把公网 HTTPS 指到 `http://127.0.0.1:8765`。
+   - **ngrok** 等：`ngrok http 8765` 会得到 `https://xxxx.ngrok-free.app`；**免费随机域名每次重启会变**——若变了，须在 Vercel 里**改 `VITE_API_BASE` 并 Redeploy**（或购买**固定域名**）。
+3. **Vercel**：`VITE_API_BASE=https://（隧道给你的主机名，无路径无尾斜杠）`。
+4. **开场前检查**：用手机 **蜂窝网络**（别连会场 Wi‑Fi）打开 Vercel 上的 `/admin`，能加载选手即隧道 + CORS 正常。
+
+**若不想依赖隧道 / 公网**：会场可改用在笔记本上 **`npm run build` + 静态服务** 同机打开（与 C 类似，全站 HTTP 同网段），不必用 Vercel；观众投票若用 Firebase 静态页则另见 `README-vote-firebase-static.md`。
 
 ## 5. 与「纯投票落地页」的区别
 
@@ -104,5 +128,6 @@ server {
 |------|------|
 | Vercel 整站 `NOT_FOUND` / `Code: NOT_FOUND` | Root Directory 未设为 **`console/frontend`**，或输出目录配置成了错误的嵌套路径 |
 | 刷新 `/admin` 404 | 静态服务器未做 **SPA fallback** 到 `index.html` |
-| API `Failed to fetch` | 未设 `VITE_API_BASE`、CORS、或 https 页面请求了 http |
+| API `Failed to fetch` | 未设 `VITE_API_BASE`、**后端未放行 Vercel 域名（`CORS_EXTRA_ORIGINS`）**、或 HTTPS 页面请求了 `http://` API |
 | Google 表读不到 | 未在 build 前配置 `VITE_GOOGLE_*`，或表未对「知道链接的人」只读共享 |
+| Vercel + 会场笔记本 uvicorn | 观众浏览器无法访问你电脑的 `localhost`；HTTPS 页也不能打 `http://` 局域网 API；须 **隧道 HTTPS** 指向 `8765` 作 `VITE_API_BASE`（见 **D**） |

@@ -1,7 +1,13 @@
 import type { Round1PairMeta, Round2LineupSlot, StatePayload } from "./types";
 
-/** 静态托管前端时设为后端根地址，例如 http://127.0.0.1:8765（须与后端 CORS 一致） */
-const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
+/**
+ * 生产 / `vite preview`：构建时注入 VITE_API_BASE（公网 HTTPS API，无尾斜杠）。
+ * `npm run dev`：强制走同源 `/api`，由 Vite 代理到本机 8765，避免与 Vercel 用的生产变量混用。
+ */
+const API_BASE = (import.meta.env.DEV
+  ? ""
+  : String(import.meta.env.VITE_API_BASE ?? "")
+).replace(/\/$/, "");
 
 function apiUrl(path: string): string {
   return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
@@ -24,9 +30,11 @@ export async function fetchState(): Promise<StatePayload> {
   try {
     res = await fetch(apiUrl("/api/state"));
   } catch (e) {
-    throw new Error(
-      `无法连接后端（${apiUrl("/api/state")}）。请确认已启动 uvicorn，且开发时用 npm run dev；静态托管时请设置 VITE_API_BASE。 ${String(e)}`
-    );
+    const url = apiUrl("/api/state");
+    const hint = import.meta.env.DEV
+      ? "开发模式：请求经本页 /api 由 Vite 转发到 127.0.0.1:8765，请启动 uvicorn 并已 pip install -r backend/requirements.txt。"
+      : `打包/线上：直连 ${url}。请在 Vercel 等平台配置 VITE_API_BASE；后端须 HTTPS、且 CORS 允许你的前端域名（见 console/docs/README-static-deploy.md）。`;
+    throw new Error(`${hint} ${String(e)}`);
   }
   if (!res.ok) throw new Error(await readError(res));
   return res.json() as Promise<StatePayload>;

@@ -88,8 +88,36 @@ type SlotView = {
   slotIndex: number;
   name: string;
   img: string;
+  /** 最终分（Round3 的 G 列；旧表仅 A:B 时用 B） */
   score: number;
+  /** Round3：B 观众均分、F 评委均分（有宽表时用于揭晓副信息） */
+  audienceAvg: number;
+  judgeAvg: number;
+  hasBreakdown: boolean;
 };
+
+/** Round3：评委均分优先用 F 列；若 API 省略尾部列则用 C～E 算术平均 */
+function round3JudgeAvgFromRow(r: string[] | undefined): number {
+  if (!r || r.length < 3) return 0;
+  if (r.length >= 6 && r[5] != null && String(r[5]).trim() !== "") {
+    return parseFloatCell(r[5]);
+  }
+  const n =
+    (parseFloatCell(r[2]) + parseFloatCell(r[3]) + parseFloatCell(r[4])) / 3;
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** 最终分：优先 G 列（与表公式一致）；否则本地 0.6×评委均分+0.4×观众均分；仅 A:B 时 B 为总分 */
+function round3FinalFromRow(r: string[] | undefined): number {
+  if (!r || r.length < 2) return 0;
+  const audienceAvg = parseFloatCell(r[1]);
+  if (r.length < 5) return audienceAvg;
+  const judgeAvg = round3JudgeAvgFromRow(r);
+  if (r.length >= 7 && r[6] != null && String(r[6]).trim() !== "") {
+    return parseFloatCell(r[6]);
+  }
+  return 0.6 * judgeAvg + 0.4 * audienceAvg;
+}
 
 function buildSlots(slice: string[][], lineup: Round2LineupSlot[]): SlotView[] {
   const padded: string[][] = slice.slice(0, MAX_ROWS);
@@ -103,11 +131,18 @@ function buildSlots(slice: string[][], lineup: Round2LineupSlot[]): SlotView[] {
     const displayName =
       sheetName || meta.name.trim() || fromImg || `选手 ${slotNum}`;
     const img = meta.img.trim() ? meta.img : PLACEHOLDER_IMG;
+    const hasBreakdown = (r?.length ?? 0) >= 5;
+    const audienceAvg = parseFloatCell(r?.[1]);
+    const judgeAvg = hasBreakdown ? round3JudgeAvgFromRow(r) : 0;
+    const score = round3FinalFromRow(r);
     return {
       slotIndex: i,
       name: displayName,
       img,
-      score: parseFloatCell(r?.[1]),
+      score,
+      audienceAvg,
+      judgeAvg,
+      hasBreakdown,
     };
   });
 }
@@ -218,8 +253,10 @@ export default function FinalRevealStage() {
       </Link>
       <h1 className="fr-title">Final Round</h1>
       <p className="fr-sub">
-        空格：按表行顺序逐个揭晓分数 → 再按总分排序并发奖 → 再按仅显示前三 · <kbd>R</kbd> 重置 · B 列读作小数总分（如
-        8.5）· 数据 <code>{range}</code> · 头像/姓名 lineup 同复活投票（<code>/stage/round2</code>）
+        空格：按表行顺序逐个揭晓 → 再按<strong>最终分</strong>排序并发奖 → 再按仅显示前三 · <kbd>R</kbd> 重置 ·
+        Round3 宽表：<strong>G</strong> 最终分（0.6×评委均分+0.4×观众均分），<strong>B</strong> 观众均分，<strong>C–E</strong>
+        三评委，<strong>F</strong> 评委均分（公式）· 数据 <code>{range}</code> · lineup 同{" "}
+        <code>/stage/round2</code>
       </p>
       {error && <div className="fr-banner">{error}</div>}
 
@@ -230,6 +267,10 @@ export default function FinalRevealStage() {
           const revealed = slotIndex < revealedCount;
           const scoreText = revealed ? `${s.score.toFixed(2)}/10` : "?.??/10";
           const m = medals[slotIndex];
+          const breakdown =
+            revealed && s.hasBreakdown
+              ? `观众均分 ${s.audienceAvg.toFixed(2)} · 评委均分 ${s.judgeAvg.toFixed(2)}`
+              : null;
           return (
             <div
               key={s.slotIndex}
@@ -239,6 +280,7 @@ export default function FinalRevealStage() {
               <img className="fr-avatar" src={s.img} alt="" />
               <div className="fr-name">{s.name}</div>
               <div className="fr-score">{scoreText}</div>
+              {breakdown && <div className="fr-breakdown">{breakdown}</div>}
             </div>
           );
         })}

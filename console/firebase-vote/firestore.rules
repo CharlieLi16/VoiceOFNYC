@@ -8,29 +8,45 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isVoteShape() {
-      return request.resource.data.keys().hasOnly([
-        'choiceId',
-        'sheetRow',
-        'label',
-        'createdAt',
-        'source',
-        'voteCode',
-        'roundId',
-      ])
-        && request.resource.data.choiceId is string
-        && request.resource.data.sheetRow is int
-        && request.resource.data.label is string
-        && request.resource.data.label.size() > 0
-        && request.resource.data.label.size() < 200
-        && request.resource.data.source == 'vote-static-page'
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.voteCode is string
-        && request.resource.data.voteCode.size() >= 0
-        && request.resource.data.voteCode.size() <= 96
-        && request.resource.data.roundId is string
-        && request.resource.data.roundId.size() > 0
-        && request.resource.data.roundId.size() < 64
-        && request.resource.data.roundId in [
+      let d = request.resource.data;
+      let k = d.keys();
+      let okKeys = k.hasOnly([
+          'choiceId',
+          'sheetRow',
+          'label',
+          'createdAt',
+          'source',
+          'voteCode',
+          'roundId',
+        ])
+        || (k.hasOnly([
+            'choiceId',
+            'sheetRow',
+            'label',
+            'createdAt',
+            'source',
+            'voteCode',
+            'roundId',
+            'audienceScore',
+          ])
+          && d.audienceScore is int
+          && d.audienceScore >= 1
+          && d.audienceScore <= 10);
+      return okKeys
+        && d.choiceId is string
+        && d.sheetRow is int
+        && d.label is string
+        && d.label.size() > 0
+        && d.label.size() < 200
+        && d.source == 'vote-static-page'
+        && d.createdAt == request.time
+        && d.voteCode is string
+        && d.voteCode.size() >= 0
+        && d.voteCode.size() <= 96
+        && d.roundId is string
+        && d.roundId.size() > 0
+        && d.roundId.size() < 64
+        && d.roundId in [
           'round1_pk_1', 'round1_pk_2', 'round1_pk_3', 'round1_pk_4', 'round1_pk_5',
           'round2_revival',
           'final_perf_1', 'final_perf_2', 'final_perf_3', 'final_perf_4', 'final_perf_5', 'final_perf_6'

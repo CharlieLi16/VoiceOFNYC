@@ -10,6 +10,14 @@ export const ROUND1_AUDIENCE_SHEET_NAME = "Round1Audience";
 export const ROUND1_AUDIENCE_DATA_A1 = "A2:E6";
 export const DEFAULT_ROUND1_AUDIENCE_RANGE = `${ROUND1_AUDIENCE_SHEET_NAME}!${ROUND1_AUDIENCE_DATA_A1}`;
 export const DEFAULT_ROUND2_AUDIENCE_RANGE = "Round2Audience!A2:B7";
-/** `/stage/final-reveal` 用；默认与复活投票（`round2AudienceRange`）同表；要单独 Tab 时改成例如 FinalAudience!A2:B7 */
-export const DEFAULT_FINAL_AUDIENCE_RANGE = DEFAULT_ROUND2_AUDIENCE_RANGE;
+
+/**
+ * 决赛打分（与复活投票 Round2 分离）：
+ * A 姓名 · B 观众均分（公式=H/I）· C/D/E 评委 · F/G 公式 · H/I 观众打分累计/人次（投票页写入）
+ */
+export const ROUND3_AUDIENCE_SHEET_NAME = "Round3Audience";
+export const DEFAULT_ROUND3_AUDIENCE_RANGE = `${ROUND3_AUDIENCE_SHEET_NAME}!A2:I7`;
+
+/** `/stage/final-reveal` 默认读 Round3；可用 `VITE_FINAL_AUDIENCE_RANGE` 覆盖 */
+export const DEFAULT_FINAL_AUDIENCE_RANGE = DEFAULT_ROUND3_AUDIENCE_RANGE;
 export const DEFAULT_AUDIENCE_POLL_MS = 5_000;

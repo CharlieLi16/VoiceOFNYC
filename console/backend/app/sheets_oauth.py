@@ -130,6 +130,11 @@ def round2_tab() -> str:
     return os.environ.get("GOOGLE_SHEET_ROUND2_TAB", "Round2Audience")
 
 
+def round3_tab() -> str:
+    """决赛打分表（Round3Audience：A2:I7，含 H/I 观众累计）"""
+    return os.environ.get("GOOGLE_SHEET_ROUND3_TAB", "Round3Audience")
+
+
 def update_range(range_a1: str, values: list[list[Any]]) -> None:
     sid = spreadsheet_id()
     if not sid:

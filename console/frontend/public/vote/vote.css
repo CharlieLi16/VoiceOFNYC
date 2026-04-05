@@ -40,6 +40,10 @@ body {
   max-width: min(42rem, 100%);
 }
 
+#vp-root.vp-root--final {
+  max-width: min(36rem, 100%);
+}
+
 .vp-brand {
   text-align: center;
   margin-bottom: 1.25rem;
@@ -293,6 +297,128 @@ body {
 
 #vp-root.vp-root--pk ~ .vp-dock .vp-dock-inner {
   max-width: min(42rem, 100%);
+}
+
+#vp-root.vp-root--final ~ .vp-dock .vp-dock-inner {
+  max-width: min(36rem, 100%);
+}
+
+/* 决赛：左图 + 右竖条 1–10 */
+.vp-grid.vp-grid--final {
+  display: block;
+}
+
+.vp-final-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: center;
+  gap: clamp(0.75rem, 4vw, 1.5rem);
+  width: 100%;
+  min-height: min(52vh, 22rem);
+  animation: vp-in-up 0.55s ease-out both;
+}
+
+.vp-final-photo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+.vp-final-photo__img {
+  width: 100%;
+  max-width: 14rem;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 0.65rem;
+  border: 1px solid var(--vp-border);
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.vp-final-photo__img--ph {
+  min-height: 12rem;
+}
+
+.vp-final-photo__name {
+  font-weight: 700;
+  font-size: clamp(1.05rem, 3.5vw, 1.25rem);
+  text-align: center;
+  color: var(--vp-text);
+}
+
+.vp-final-score {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  touch-action: manipulation;
+}
+
+.vp-final-score__value {
+  font-family: Bungee, cursive;
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  color: var(--vp-gold);
+  min-height: 1.2em;
+  line-height: 1;
+}
+
+.vp-final-score__hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--vp-muted);
+}
+
+.vp-final-range-wrap {
+  width: 3rem;
+  height: min(46vh, 16rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.vp-final-range {
+  width: min(46vh, 16rem);
+  height: 2.75rem;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--vp-gold);
+  transform: rotate(-90deg);
+  transform-origin: center center;
+  touch-action: none;
+}
+
+@media (max-width: 380px) {
+  .vp-final-row {
+    flex-direction: column;
+    align-items: center;
+    min-height: auto;
+  }
+
+  .vp-final-score {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .vp-final-range-wrap {
+    height: 12rem;
+    width: 100%;
+    max-width: 14rem;
+  }
+
+  .vp-final-range {
+    width: 12rem;
+  }
 }
 
 .vp-submit {

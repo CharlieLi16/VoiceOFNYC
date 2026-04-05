@@ -10,16 +10,16 @@ export type StageContestantPreset = {
 };
 
 export const STAGE_CONTESTANT_PRESETS: readonly StageContestantPreset[] = [
-  { num: 1, name: "Danting", img: "/img/contestants/1.jpg" },
-  { num: 2, name: "Aurora 四岁", img: "/img/contestants/2.jpg" },
-  { num: 3, name: "刘佳希", img: "/img/contestants/3.jpg" },
-  { num: 4, name: "王梓骏", img: "/img/contestants/4.jpg" },
-  { num: 5, name: "张运骄JoJo", img: "/img/contestants/5.jpg" },
-  { num: 6, name: "Sean程嘉禾", img: "/img/contestants/6.jpg" },
-  { num: 7, name: "Elvin", img: "/img/contestants/7.jpg" },
-  { num: 8, name: "安德烈", img: "/img/contestants/8.jpg" },
-  { num: 9, name: "白子旭", img: "/img/contestants/9.jpg" },
-  { num: 10, name: "吴谦", img: "/img/contestants/10.jpg" },
+  { num: 1, name: "Siwei", img: "/img/contestants/1.jpg" },
+  { num: 2, name: "蔡彦培", img: "/img/contestants/2.jpg" },
+  { num: 3, name: "Julian Zhu", img: "/img/contestants/3.jpg" },
+  { num: 4, name: "Mandy", img: "/img/contestants/4.jpg" },
+  { num: 5, name: "赵星童", img: "/img/contestants/5.jpg" },
+  { num: 6, name: "coco林小妍", img: "/img/contestants/6.jpg" },
+  { num: 7, name: "吴子涵", img: "/img/contestants/7.jpg" },
+  { num: 8, name: "Timmy Zihan Ma", img: "/img/contestants/8.jpg" },
+  { num: 9, name: "刘佳希", img: "/img/contestants/9.jpg" },
+  { num: 10, name: "Hazel Jia", img: "/img/contestants/10.jpg" },
 ] as const;
 
 export const STAGE_CONTESTANT_NUMS = STAGE_CONTESTANT_PRESETS.map((p) => p.num);

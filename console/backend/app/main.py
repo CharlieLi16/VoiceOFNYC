@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 try:
     from dotenv import load_dotenv
@@ -57,20 +59,31 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Voice of NYC API", lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:5173",
-        "http://localhost:5173",
-        "http://127.0.0.1:4173",
-        "http://localhost:4173",
-        "http://127.0.0.1:8080",
-        "http://localhost:8080",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_DEFAULT_CORS_ORIGINS = [
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:4173",
+    "http://localhost:4173",
+    "http://127.0.0.1:8080",
+    "http://localhost:8080",
+]
+_extra_cors = [
+    o.strip()
+    for o in os.environ.get("CORS_EXTRA_ORIGINS", "").split(",")
+    if o.strip()
+]
+_cors_origins = list(_DEFAULT_CORS_ORIGINS) + _extra_cors
+_cors_regex = os.environ.get("CORS_ALLOW_ORIGIN_REGEX", "").strip()
+_cors_kw: dict = {
+    "allow_origins": _cors_origins,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+if _cors_regex:
+    _cors_kw["allow_origin_regex"] = _cors_regex
+
+app.add_middleware(CORSMiddleware, **_cors_kw)
 
 
 async def _broadcast_state() -> None:
@@ -328,6 +341,26 @@ class Round2NameBody(BaseModel):
     name: str = Field(min_length=0, max_length=200)
 
 
+class Round3ScoreBody(BaseModel):
+    """Round3 表 B 列：观众均分（支持小数）"""
+
+    row: int = Field(ge=2, le=200, description="工作表行号，默认数据区为 2–7")
+    score: float = Field(ge=0, le=1e6, description="观众均分")
+
+
+class Round3JudgeBody(BaseModel):
+    """Round3 表 C/D/E 列：第 1～3 位评委分"""
+
+    row: int = Field(ge=2, le=200)
+    judge: Literal[1, 2, 3]
+    score: float = Field(ge=0, le=1e6)
+
+
+class Round3NameBody(BaseModel):
+    row: int = Field(ge=2, le=200)
+    name: str = Field(min_length=0, max_length=200)
+
+
 def _sheet_int_cell(row: list[Any], idx: int) -> int:
     if idx >= len(row):
         return 0
@@ -380,6 +413,46 @@ async def sheets_write_round2_votes(body: Round2VotesBody) -> JSONResponse:
 @app.post("/api/sheets/round2-name")
 async def sheets_write_round2_name(body: Round2NameBody) -> JSONResponse:
     rng = f"{sheets_oauth.round2_tab()}!A{body.row}"
+    try:
+        sheets_oauth.update_range(rng, [[body.name]])
+    except ValueError as e:
+        raise HTTPException(503, str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(401, str(e)) from e
+    return JSONResponse({"ok": True, "range": rng})
+
+
+@app.post("/api/sheets/round3-score")
+async def sheets_write_round3_score(body: Round3ScoreBody) -> JSONResponse:
+    tab = sheets_oauth.round3_tab()
+    rng = f"{tab}!B{body.row}"
+    try:
+        sheets_oauth.update_range(rng, [[body.score]])
+    except ValueError as e:
+        raise HTTPException(503, str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(401, str(e)) from e
+    return JSONResponse({"ok": True, "range": rng})
+
+
+@app.post("/api/sheets/round3-judge")
+async def sheets_write_round3_judge(body: Round3JudgeBody) -> JSONResponse:
+    tab = sheets_oauth.round3_tab()
+    col_letter = "CDE"[body.judge - 1]
+    rng = f"{tab}!{col_letter}{body.row}"
+    try:
+        sheets_oauth.update_range(rng, [[body.score]])
+    except ValueError as e:
+        raise HTTPException(503, str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(401, str(e)) from e
+    return JSONResponse({"ok": True, "range": rng})
+
+
+@app.post("/api/sheets/round3-name")
+async def sheets_write_round3_name(body: Round3NameBody) -> JSONResponse:
+    tab = sheets_oauth.round3_tab()
+    rng = f"{tab}!A{body.row}"
     try:
         sheets_oauth.update_range(rng, [[body.name]])
     except ValueError as e:

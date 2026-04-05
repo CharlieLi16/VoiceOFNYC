@@ -1,24 +1,21 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   applyRound1NumberedDefaults,
   fetchRound1StagePairs,
   fetchRound2Lineup,
-  fetchState,
   importContestants,
   importRound1PairsFromPublicFiles,
   importRound2LineupFromPublicFiles,
-  patchScores,
   saveRound1StagePairs,
   saveRound2Lineup,
 } from "@/api/client";
-import type { Contestant, Round1PairMeta, Round2LineupSlot, StatePayload } from "@/api/types";
+import type { Round1PairMeta, Round2LineupSlot } from "@/api/types";
 import {
   getStageContestantPreset,
   matchStageContestantNum,
   STAGE_CONTESTANT_PRESETS,
 } from "@/config/stageContestantPresets";
-
-const Z = (n: number) => (Number.isFinite(n) ? n : 0);
 
 const EMPTY_R1_PAIR: Round1PairMeta = {
   leftName: "",
@@ -37,25 +34,10 @@ function defaultR2Slots(): Round2LineupSlot[] {
   return Array.from({ length: 6 }, () => ({ ...EMPTY_R2_SLOT }));
 }
 
-function applyContestantToForm(
-  c: Contestant,
-  setJudges: (v: number[]) => void,
-  setAudience: (v: number) => void
-) {
-  const j = parseFloat(c.judges) || 0;
-  const a = parseFloat(c.audience) || 0;
-  setJudges([j, j, j, j]);
-  setAudience(a);
-}
-
 type AdminStageTab = "r1" | "r2";
 
 export default function Admin() {
-  const [state, setState] = useState<StatePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [judges, setJudges] = useState([0, 0, 0, 0]);
-  const [audience, setAudience] = useState(0);
   const [busy, setBusy] = useState(false);
   const [importOk, setImportOk] = useState<string | null>(null);
   const [r1Pairs, setR1Pairs] = useState<Round1PairMeta[]>(defaultR1Pairs);
@@ -177,28 +159,6 @@ export default function Admin() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setError(null);
-      try {
-        const s = await fetchState();
-        if (cancelled) return;
-        setState(s);
-        if (s.contestants[0]) {
-          const c = s.contestants[0];
-          setSelectedId(c.id);
-          applyContestantToForm(c, setJudges, setAudience);
-        }
-      } catch (e) {
-        if (!cancelled) setError(String(e));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
     fetchRound1StagePairs()
       .then(({ pairs }) => {
         if (!cancelled) setR1Pairs(pairs);
@@ -221,48 +181,6 @@ export default function Admin() {
     };
   }, []);
 
-  const refresh = useCallback(async () => {
-    setError(null);
-    try {
-      const s = await fetchState();
-      setState(s);
-      const c =
-        (selectedId != null
-          ? s.contestants.find((x) => x.id === selectedId)
-          : null) ?? s.contestants[0];
-      if (c) {
-        setSelectedId(c.id);
-        applyContestantToForm(c, setJudges, setAudience);
-      }
-    } catch (e) {
-      setError(String(e));
-    }
-  }, [selectedId]);
-
-  function selectContestant(c: Contestant) {
-    setSelectedId(c.id);
-    applyContestantToForm(c, setJudges, setAudience);
-  }
-
-  const previewTotal = audience / 2 + judges.reduce((s, x) => s + x, 0) / 24;
-
-  async function save() {
-    if (selectedId == null) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await patchScores(selectedId, {
-        judge_scores: judges,
-        audience,
-      });
-      setState({ contestants: res.contestants, ranked: res.ranked });
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function onImportFile(f: File) {
     setBusy(true);
     setError(null);
@@ -277,13 +195,7 @@ export default function Admin() {
       }
       if (!Array.isArray(data)) throw new Error("JSON 根节点须为数组");
       const res = await importContestants(data as Record<string, unknown>[]);
-      setState({ contestants: res.contestants, ranked: res.ranked });
-      if (res.contestants.length) {
-        const c = res.contestants[0];
-        setSelectedId(c.id);
-        applyContestantToForm(c, setJudges, setAudience);
-      }
-      setImportOk(`已从文件导入 ${res.contestants.length} 名选手`);
+      setImportOk(`已从文件导入 ${res.contestants.length} 名选手（已写入数据库）`);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -304,14 +216,8 @@ export default function Admin() {
       }
       const data = (await r.json()) as unknown;
       if (!Array.isArray(data)) throw new Error("种子 JSON 须为数组");
-      const res = await importContestants(data as Record<string, unknown>[]);
-      setState({ contestants: res.contestants, ranked: res.ranked });
-      if (res.contestants.length) {
-        const c = res.contestants[0];
-        setSelectedId(c.id);
-        applyContestantToForm(c, setJudges, setAudience);
-      }
-      setImportOk(`已导入种子名单 ${res.contestants.length} 人（已写入后端数据库）`);
+      await importContestants(data as Record<string, unknown>[]);
+      setImportOk(`已导入种子名单 ${data.length} 人（已写入后端数据库）`);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -319,32 +225,18 @@ export default function Admin() {
     }
   }
 
-  function exportJson() {
-    if (!state) return;
-    const blob = new Blob([JSON.stringify(state.contestants, null, 2)], {
-      type: "application/json",
-    });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "contestants.json";
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  const selected =
-    state?.contestants.find((c) => c.id === selectedId) ?? null;
-
   return (
     <main className="page admin-page">
       <header className="admin-bar">
         <h1>控分后台</h1>
         <div className="admin-bar-actions">
-          <button type="button" className="btn subtle" onClick={() => void refresh()}>
-            刷新
-          </button>
-          <button type="button" className="btn subtle" onClick={exportJson} disabled={!state}>
-            导出 JSON
-          </button>
+          <Link
+            to="/admin/contestants-editor"
+            className="btn subtle"
+            style={{ textDecoration: "none", display: "inline-block" }}
+          >
+            选手资料编辑
+          </Link>
           <label className="btn subtle file-btn">
             导入 JSON
             <input
@@ -371,7 +263,8 @@ export default function Admin() {
       </header>
 
       <p className="admin-hint subtle">
-        导入会请求后端 <code>/api/import</code>。开发请用 <code>npm run dev</code>（自动代理 8765）；若用{" "}
+        编辑名单与导出 JSON 请用顶部「<strong>选手资料</strong>」或「选手资料编辑」。此处仅<strong>导入</strong>到后端{" "}
+        <code>/api/import</code>。开发请用 <code>npm run dev</code>（自动代理 8765）；若用{" "}
         <code>python -m http.server</code> 打开打包目录，请在 <code>.env</code> 里设置{" "}
         <code>VITE_API_BASE=http://127.0.0.1:8765</code> 后重新 <code>npm run build</code>，并保证后端已启动。
       </p>
@@ -379,107 +272,12 @@ export default function Admin() {
       {importOk && <div className="banner success">{importOk}</div>}
       {error && <div className="banner error">{error}</div>}
 
-      <section className="admin-section" aria-labelledby="admin-section-scores-title">
-        <h2 id="admin-section-scores-title" className="admin-section-title">
-          选手与分数
-        </h2>
-        <p className="admin-hint subtle" style={{ marginBottom: "1rem" }}>
-          与现场大屏 lineup 分开配置：此处为<strong>算分名单</strong>（导入 / 评委 / 观众票），不影响{" "}
-          <code>/stage/round1</code>、<code>/stage/round2</code> 的头像与 PK 姓名。
-        </p>
-        <div className="admin-grid">
-        <section className="panel">
-          <h2>选手列表</h2>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>姓名</th>
-                  <th>总分</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state?.contestants.map((c) => (
-                  <tr
-                    key={c.id}
-                    className={c.id === selectedId ? "active" : ""}
-                    onClick={() => selectContestant(c)}
-                  >
-                    <td>{c.id}</td>
-                    <td>{c.name}</td>
-                    <td>{c.total}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="panel form-panel">
-          <h2>录入分数</h2>
-          {selected ? (
-            <p className="selected-line">
-              当前：<strong>{selected.name}</strong> · {selected.song}
-            </p>
-          ) : (
-            <p>请选择选手</p>
-          )}
-
-          <div className="score-groups">
-            <div>
-              <h3>评委 ×4</h3>
-              <div className="inputs-4">
-                {judges.map((v, i) => (
-                  <label key={i}>
-                    <span>{i + 1}</span>
-                    <input
-                      type="number"
-                      value={v}
-                      onChange={(e) => {
-                        const next = [...judges];
-                        next[i] = Z(parseFloat(e.target.value));
-                        setJudges(next);
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h3>观众</h3>
-              <label className="single-input">
-                <input
-                  type="number"
-                  value={audience}
-                  onChange={(e) => setAudience(Z(parseFloat(e.target.value)))}
-                />
-              </label>
-            </div>
-          </div>
-
-          <p className="preview-total">
-            预览总分（与保存后一致）：<strong>{previewTotal.toFixed(2)}</strong>
-          </p>
-
-          <button
-            type="button"
-            className="btn primary"
-            disabled={busy || selectedId == null}
-            onClick={() => void save()}
-          >
-            {busy ? "保存中…" : "保存到服务器"}
-          </button>
-        </section>
-        </div>
-      </section>
-
       <section className="admin-section admin-section--stage" aria-labelledby="admin-section-stage-title">
         <h2 id="admin-section-stage-title" className="admin-section-title">
           现场大屏
         </h2>
         <p className="admin-hint subtle" style={{ marginBottom: "0.75rem" }}>
-          按环节切换配置 lineup（与上方选手名单<strong>无联动</strong>）。打开对应路由即可预览。
+          按环节切换配置 lineup（与<strong>算分名单</strong>无联动，名单在「选手资料」页维护）。打开对应路由即可预览。
         </p>
         <div className="admin-stage-tabs" role="tablist" aria-label="现场大屏环节">
           <button

@@ -4,6 +4,7 @@
  */
 var ROUND1_SHEET = "Round1Audience";
 var ROUND2_SHEET = "Round2Audience";
+var ROUND3_SHEET = "Round3Audience";
 
 function jsonOut(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(
@@ -52,6 +53,64 @@ function doPost(e) {
       return jsonOut({ ok: true });
     }
 
+    /**
+     * Round3：直接写 B 列（会破坏「观众均分」公式；新表请用 H/I + addRound3AudienceScore）
+     */
+    if (body.action === "setRound3Score") {
+      var shR3 = ss.getSheetByName(ROUND3_SHEET);
+      if (!shR3) return jsonOut({ ok: false, error: "missing " + ROUND3_SHEET });
+      var rowR3 = parseInt(body.row, 10);
+      var sc = body.score != null ? Number(body.score) : Number(body.votes);
+      shR3.getRange(rowR3, 2).setValue(isNaN(sc) ? 0 : sc);
+      return jsonOut({ ok: true });
+    }
+
+    /** Round3：决赛投票页 1–10 分 → H 累计、I 人次，B 由公式算均分 */
+    if (body.action === "addRound3AudienceScore") {
+      if (!checkVoteIngestSecret_(body)) {
+        return jsonOut({ ok: false, error: "unauthorized" });
+      }
+      var shS = ss.getSheetByName(ROUND3_SHEET);
+      if (!shS) return jsonOut({ ok: false, error: "missing " + ROUND3_SHEET });
+      var rowS = parseInt(body.row, 10);
+      var scoreS = Number(body.score);
+      if (
+        !scoreS ||
+        scoreS < 1 ||
+        scoreS > 10 ||
+        Math.floor(scoreS) !== scoreS
+      ) {
+        return jsonOut({ ok: false, error: "score must be integer 1–10" });
+      }
+      var sumS = Number(shS.getRange(rowS, 8).getValue()) || 0;
+      var cntS = Number(shS.getRange(rowS, 9).getValue()) || 0;
+      shS.getRange(rowS, 8).setValue(sumS + scoreS);
+      shS.getRange(rowS, 9).setValue(cntS + 1);
+      return jsonOut({ ok: true });
+    }
+
+    /** Round3：C/D/E = 评委 1/2/3 分（列号 3/4/5） */
+    if (body.action === "setRound3Judge") {
+      var shJ = ss.getSheetByName(ROUND3_SHEET);
+      if (!shJ) return jsonOut({ ok: false, error: "missing " + ROUND3_SHEET });
+      var rowJ = parseInt(body.row, 10);
+      var jn = parseInt(body.judge, 10);
+      if (jn < 1 || jn > 3) {
+        return jsonOut({ ok: false, error: "judge must be 1, 2 or 3" });
+      }
+      var sj = body.score != null ? Number(body.score) : Number(body.value);
+      shJ.getRange(rowJ, 2 + jn).setValue(isNaN(sj) ? 0 : sj);
+      return jsonOut({ ok: true });
+    }
+
+    if (body.action === "setRound3Name") {
+      var shR3n = ss.getSheetByName(ROUND3_SHEET);
+      if (!shR3n) return jsonOut({ ok: false, error: "missing " + ROUND3_SHEET });
+      var rowR3n = parseInt(body.row, 10);
+      shR3n.getRange(rowR3n, 1).setValue(String(body.name || ""));
+      return jsonOut({ ok: true });
+    }
+
     if (body.action === "setFinalName") {
       var sh3 = ss.getSheetByName(ROUND2_SHEET);
       if (!sh3) return jsonOut({ ok: false, error: "missing " + ROUND2_SHEET });
@@ -73,6 +132,23 @@ function doPost(e) {
       var prev = sh4.getRange(row4, 2).getValue();
       var base = Number(prev) || 0;
       sh4.getRange(row4, 2).setValue(base + d);
+      return jsonOut({ ok: true });
+    }
+
+    /** Round3：H/I 累加（delta 默认 1，人次 +1；均分 = H/I） */
+    if (body.action === "addRound3Vote") {
+      if (!checkVoteIngestSecret_(body)) {
+        return jsonOut({ ok: false, error: "unauthorized" });
+      }
+      var shR3a = ss.getSheetByName(ROUND3_SHEET);
+      if (!shR3a) return jsonOut({ ok: false, error: "missing " + ROUND3_SHEET });
+      var rowR3a = parseInt(body.row, 10);
+      var dR3 = Number(body.delta);
+      if (!dR3) dR3 = 1;
+      var sumR3 = Number(shR3a.getRange(rowR3a, 8).getValue()) || 0;
+      var cntR3 = Number(shR3a.getRange(rowR3a, 9).getValue()) || 0;
+      shR3a.getRange(rowR3a, 8).setValue(sumR3 + dR3);
+      shR3a.getRange(rowR3a, 9).setValue(cntR3 + 1);
       return jsonOut({ ok: true });
     }
 
@@ -121,9 +197,9 @@ function checkVoteIngestSecret_(body) {
 }
 
 function doGet() {
-  return jsonOut({
+    return jsonOut({
     ok: true,
     hint:
-      "POST JSON: setPair | setFinal | setFinalName | addFinalVote {row,delta?,secret?} | addPairVote {pairRow,side,part?,delta?,secret?}；可选脚本属性 VOTE_INGEST_SECRET",
+      "POST JSON: … | addRound3AudienceScore {row,score:1-10} | addRound3Vote {row,delta?}→H/I | setRound3Judge … | …；可选 VOTE_INGEST_SECRET",
   });
 }

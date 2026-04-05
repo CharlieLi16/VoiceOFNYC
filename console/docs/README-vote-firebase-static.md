@@ -56,8 +56,10 @@ localStorage 按 **`eventId` + 实际 roundId** 区分环节。
 
 ## 部署顺序
 
-1. `firestore:rules` + `functions`（含 **`publishVoteUi`**、**`STAFF_PUBLISH_SECRET`**）。
-2. 发布前端 **`dist`**（含 **`vote/index.html`**、**`vote/vote.html`**）。
+1. **Google 表**：运行 **`setupVoiceOfNYCConsoleSheets`**，使 `Round3Audience` 含 **H/I** 列与 **B** 均分公式（见 `README-audience-vote.md`）。
+2. 部署 / 更新 **`vote-ingest.gs`** Web App（含 **`addRound3AudienceScore`**）。
+3. `firestore:rules` + `functions`（含 **`submitVote`** 决赛校验 **`audienceScore`**、**`publishVoteUi`**、**`STAFF_PUBLISH_SECRET`**）。
+4. 发布前端 **`dist`**（含 **`vote/index.html`**、**`vote/vote.html`**）。
 
 ## 旧数据（仅 `used: true`、无 `usedRounds`）
 
@@ -65,7 +67,8 @@ localStorage 按 **`eventId` + 实际 roundId** 区分环节。
 
 ## 选手与行号
 
-- **复活 / 决赛** 等多人选：`submitVote` 仍只允许 **`s1`～`s6`**、**`sheetRow` 2～7**（与 `Round2Audience` 六行一致）。
+- **复活 / 决赛**：`submitVote` 仍只允许 **`s1`～`s6`**、**`sheetRow` 2～7`。写表：**`round2_revival`** → **`Round2Audience`** B 列 **`addFinalVote`**。**`final_perf_*`**（**`vote.html`** 竖条打分）须传 **`audienceScore`（1～10 整数）** → **`addRound3AudienceScore`** 写 **`Round3Audience` 的 H/I**；**B** 为公式均分。无 `audienceScore` 的旧客户端仍走 **`addRound3Vote`**（H/I +1 权重）。评委分填 **C–E** 或 **`setRound3Judge`**（见 `README-audience-vote.md`）。
+- **决赛 UI**：`final_perf_1`～`6` 为 **单人照片 + 竖向 1～10 分条**；`sheetRow` 建议与表行一致（第 n 唱 → 第 **n+1** 行），与 `voteUi` 中该轮唯一选手对齐。
 - **`publishVoteUi`**：允许 **`s1`～`s10`**、**`sheetRow` 2～11**。初赛两人若对应 **Round1 同一数据行（B/C）**，允许 **两行号相同**（须为 2～6 且整份 candidates 恰好 2 人）。复活/决赛等多人发布仍须行号互不相同。
 - 大屏 lineup 仍在主站 **`/admin`**。
 
