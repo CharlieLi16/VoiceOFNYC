@@ -11,6 +11,10 @@ window.__VOTE_PAGE_CONFIG = {
     projectId: "your-project-id",
     appId: "REPLACE_ME",
   },
+  /**
+   * 多人轮次（复活/决赛）：1～6 人，sheetRow 与表格一致。
+   * 初赛 round1_pk_*：须恰好 2 人，顺序 [左, 右] → Round1Audience 该组 B / C 列。
+   */
   candidates: [
     { id: "s1", sheetRow: 2, label: "选手 1", img: "/img/contestants/1.jpg" },
   ],
