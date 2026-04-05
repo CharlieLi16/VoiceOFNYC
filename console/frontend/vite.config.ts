@@ -6,23 +6,6 @@ import type { ProxyOptions } from "vite";
 
 const BACKEND_DEV = "http://127.0.0.1:8765";
 
-/** 避免开发时浏览器强缓存 public/vote/*.js，改代码后 localhost 仍用旧 vote-app */
-function voteStaticNoCachePlugin() {
-  return {
-    name: "vote-static-no-cache",
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const pathOnly = req.url?.split("?")[0] ?? "";
-        if (pathOnly.startsWith("/vote/")) {
-          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-          res.setHeader("Pragma", "no-cache");
-        }
-        next();
-      });
-    },
-  };
-}
-
 const apiProxy: ProxyOptions = {
   target: BACKEND_DEV,
   changeOrigin: true,
@@ -45,7 +28,7 @@ const apiProxy: ProxyOptions = {
 };
 
 export default defineConfig({
-  plugins: [react(), voteStaticNoCachePlugin()],
+  plugins: [react()],
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
   },
@@ -56,5 +39,11 @@ export default defineConfig({
       "/ws": { target: "ws://127.0.0.1:8765", ws: true },
     },
     host: true,
+    /** 避免浏览器强缓存 public/vote/*.js、*.html，改代码后 localhost 仍显示旧逻辑 */
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
   },
 });
