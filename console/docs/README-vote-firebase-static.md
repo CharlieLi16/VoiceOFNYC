@@ -5,13 +5,17 @@
 ## 票码与轮次（`VOTE_CODES=__TICKETS__`）
 
 - Firestore：`events/{eventId}/tickets/{CODE}`。每个码在 **每个 `voteRoundId` 下各可成功投 1 次**（字段 `usedRounds` 记录已用轮次）。
-- Cloud Function [`firebase-vote/functions/index.js`](../firebase-vote/functions/index.js) 内 **`ALLOWED_ROUND_IDS`** 为唯一合法值；前端 **`vote-config.js` 的 `voteRoundId`** 必须与之一致。
+- Cloud Function [`firebase-vote/functions/index.js`](../firebase-vote/functions/index.js) 内 **`ALLOWED_ROUND_IDS`** 为唯一合法值。
+- **轮次来源（二选一，URL 优先）**：在投票页地址后加 **`?roundId=round2_revival`**（或任一合法 id）。未带参数时使用 **`vote-config.js` 的 `voteRoundId`**。现场可在 PPT 里只放不同链接切环节，**无需每轮重新部署**（同一 build 即可）。
 - **合法 `voteRoundId`（共 12 个）**  
   - 第一轮 PK 五组：`round1_pk_1` … `round1_pk_5`  
   - 复活投票：`round2_revival`  
   - 决赛每人一场：`final_perf_1` … `final_perf_6`
 
-换环节时：改 `voteRoundId`（及 `candidates` / `sheetRow` 与 Google 表一致）→ **`npm run build`** → 重新部署静态资源；**无需**为每轮重新印票码（同一批码可跨轮使用，每轮各 1 次）。
+- **只换环节、选手与表仍与当前页一致**：改链接查询参数即可，例如  
+  `https://你的域名/vote/?roundId=round1_pk_2`  
+- **换环节且选手/表行不同**（如决赛 6 人）：仍需改 `vote-config.js` 里 `candidates` 等 → build → 部署；`roundId` 仍可用 URL 指定。  
+- **无需**为每轮重新印票码（同一批码可跨轮使用，每轮各 1 次）。
 
 ## 其它 `VOTE_CODES` 模式
 
@@ -20,7 +24,7 @@
 
 ## 浏览器「每机一票」
 
-`vote-app.js` 的 localStorage key 含 **`eventId` + `voteRoundId`**，因此 **每一轮** 在同一浏览器可各投一次（与 `oneVotePerBrowser` / `lockBrowserAfterSubmit` 配置一致）。
+`vote-app.js` 的 localStorage key 含 **`eventId` + 实际生效的 roundId**（URL 或配置），因此 **每一轮** 在同一浏览器可各投一次（与 `oneVotePerBrowser` / `lockBrowserAfterSubmit` 配置一致）。
 
 ## 部署顺序
 

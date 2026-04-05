@@ -61,6 +61,15 @@ body {
   color: var(--vp-muted);
 }
 
+.vp-round-meta {
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  color: var(--vp-gold-dim);
+  word-break: break-all;
+}
+
 .vp-banner {
   padding: 0.65rem 0.85rem;
   border-radius: 0.5rem;

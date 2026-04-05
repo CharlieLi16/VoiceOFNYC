@@ -3,7 +3,7 @@
  */
 window.__VOTE_PAGE_CONFIG = {
   eventId: "your-event-id",
-  /** 与 functions/index.js ALLOWED_ROUND_IDS 一致，例如 round2_revival、final_perf_1 */
+  /** 默认轮次；可被 URL ?roundId= 覆盖（与 functions/index.js ALLOWED_ROUND_IDS 一致） */
   voteRoundId: "round2_revival",
   firebase: {
     apiKey: "REPLACE_ME",

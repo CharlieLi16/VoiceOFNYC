@@ -6,6 +6,23 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 
 const cfg = window.__VOTE_PAGE_CONFIG;
+
+/** 须与 firebase-vote/functions/index.js 中 ALLOWED_ROUND_IDS 一致 */
+const ALLOWED_ROUND_IDS = new Set([
+  "round1_pk_1",
+  "round1_pk_2",
+  "round1_pk_3",
+  "round1_pk_4",
+  "round1_pk_5",
+  "round2_revival",
+  "final_perf_1",
+  "final_perf_2",
+  "final_perf_3",
+  "final_perf_4",
+  "final_perf_5",
+  "final_perf_6",
+]);
+
 const gridEl = document.getElementById("vp-grid");
 const bannerEl = document.getElementById("vp-banner");
 const submitBtn = document.getElementById("vp-submit");
@@ -31,8 +48,17 @@ function validFirebase(fb) {
   );
 }
 
-function storageKey() {
-  const rid = String(cfg?.voteRoundId ?? "").trim() || "unset";
+/** 链接 ?roundId=xxx 优先，便于 PPT 放不同 URL 切环节；否则用 vote-config.js */
+function resolveVoteRoundId() {
+  const q = new URLSearchParams(window.location.search).get("roundId");
+  const fromUrl = q != null ? String(q).trim() : "";
+  const fromCfg = String(cfg?.voteRoundId ?? "").trim();
+  if (fromUrl) return fromUrl;
+  return fromCfg;
+}
+
+function storageKeyFor(roundId) {
+  const rid = String(roundId || "").trim() || "unset";
   return `vp_voted_${cfg?.eventId ?? "default"}_${rid}`;
 }
 
@@ -64,10 +90,26 @@ function init() {
     return;
   }
 
-  if (!String(cfg.voteRoundId || "").trim()) {
-    showBanner("请在 vote-config.js 中设置 voteRoundId（当前投票轮次，见 console/docs/README-vote-firebase-static.md）。");
+  const resolvedRoundId = resolveVoteRoundId();
+  if (!resolvedRoundId) {
+    showBanner(
+      "请使用带 ?roundId= 的链接，或在 vote-config.js 中设置 voteRoundId。详见 console/docs/README-vote-firebase-static.md。"
+    );
     submitBtn.disabled = true;
     return;
+  }
+  if (!ALLOWED_ROUND_IDS.has(resolvedRoundId)) {
+    showBanner(`链接或配置里的投票轮次无效：「${resolvedRoundId}」。请对照文档中的 12 个合法 roundId。`);
+    submitBtn.disabled = true;
+    return;
+  }
+
+  const brand = document.querySelector(".vp-brand");
+  if (brand) {
+    const meta = document.createElement("p");
+    meta.className = "vp-round-meta";
+    meta.textContent = `当前环节：${resolvedRoundId}`;
+    brand.appendChild(meta);
   }
 
   const shouldLockBrowser = () => {
@@ -76,7 +118,7 @@ function init() {
     return cfg.lockBrowserAfterSubmit === true;
   };
 
-  if (shouldLockBrowser() && localStorage.getItem(storageKey()) === "1") {
+  if (shouldLockBrowser() && localStorage.getItem(storageKeyFor(resolvedRoundId)) === "1") {
     document.querySelector(".vp-dock")?.remove();
     showDone(cfg);
     return;
@@ -167,9 +209,9 @@ function init() {
           sheetRow: selected.sheetRow,
           label: selected.label,
           voteCode,
-          roundId: String(cfg.voteRoundId).trim(),
+          roundId: resolvedRoundId,
         });
-        if (shouldLockBrowser()) localStorage.setItem(storageKey(), "1");
+        if (shouldLockBrowser()) localStorage.setItem(storageKeyFor(resolvedRoundId), "1");
         if (data?.sheetUncertain) {
           showBanner("已计入。若大屏未更新请稍候刷新或联系工作人员。", true);
         } else {
