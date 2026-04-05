@@ -12,8 +12,18 @@ window.__VOTE_PAGE_CONFIG = {
     appId: "REPLACE_ME",
   },
   /**
-   * 多人轮次（复活/决赛）：1～6 人，sheetRow 与表格一致。
-   * 初赛 round1_pk_*：须恰好 2 人，顺序 [左, 右] → Round1Audience 该组 B / C 列。
+   * 可选：初赛五组固定 1v2、3v4…（round1_pk_* 时 vote.html 优先于此，覆盖 Firestore candidates）。
+   * 每人 id s1～s10；sheetRow 用 2～11 占位且同组不重复即可（写表仍由 roundId → pairRow）。
+   */
+  round1PkByRoundId: {
+    round1_pk_1: [
+      { id: "s1", sheetRow: 2, label: "选手 1", img: "/img/contestants/1.jpg" },
+      { id: "s2", sheetRow: 3, label: "选手 2", img: "/img/contestants/2.jpg" },
+    ],
+  },
+  /**
+   * 多人轮次（复活/决赛）：1～6 人，sheetRow 2～7。
+   * 初赛若未配 round1PkByRoundId 某组，可在此写恰好 2 人作兜底。
    */
   candidates: [
     { id: "s1", sheetRow: 2, label: "选手 1", img: "/img/contestants/1.jpg" },

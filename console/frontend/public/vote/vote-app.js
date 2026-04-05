@@ -152,6 +152,15 @@ async function init() {
     console.warn("voteUi getDoc", e);
   }
 
+  /** 初赛五组：vote-config 里 round1PkByRoundId 优先于 Firestore 的 candidates（便于本地固定 1v2、3v4…） */
+  const pkMap = cfg?.round1PkByRoundId;
+  if (isRound1PkRound(resolvedRoundId) && pkMap && typeof pkMap === "object") {
+    const pair = pkMap[resolvedRoundId];
+    if (Array.isArray(pair) && pair.length === 2) {
+      displayCfg = { ...displayCfg, candidates: pair.map(normalizeCandidate) };
+    }
+  }
+
   if (!displayCfg.candidates.length) {
     showBanner("未配置选手列表（vote-config 或 Firestore voteUi）。");
     submitBtn.disabled = true;

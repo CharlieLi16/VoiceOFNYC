@@ -20,8 +20,8 @@ const ROUND_ROWS = [
   { id: "final_perf_6", label: "决赛 · 第 6 唱" },
 ];
 
-const IDS = ["s1", "s2", "s3", "s4", "s5", "s6"];
-const ROWS = [2, 3, 4, 5, 6, 7];
+const IDS = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"];
+const ROWS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
 const cfg = window.__VOTE_PAGE_CONFIG;
 

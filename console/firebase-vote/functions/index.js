@@ -55,7 +55,22 @@ function pairRowFromRound1PkRoundId(roundId) {
 }
 
 const ALLOWED_CHOICE_IDS = new Set(["s1", "s2", "s3", "s4", "s5", "s6"]);
+/** 初赛 PK 十人五组（1v2…9v10）submitVote 审计用 */
+const ROUND1_PAIR_CHOICE_IDS = new Set([
+  "s1",
+  "s2",
+  "s3",
+  "s4",
+  "s5",
+  "s6",
+  "s7",
+  "s8",
+  "s9",
+  "s10",
+]);
 const ALLOWED_SHEET_ROWS = new Set([2, 3, 4, 5, 6, 7]);
+/** publishVoteUi 允许更宽的行号，便于初赛两人占位与复活 2～7 共存校验 */
+const PUBLISH_SHEET_ROWS = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
 /** 与 firestore.rules / vote-config 一致时可收紧；含决赛第 6 人（s6 / 第 7 行） */
 function assertAllowedVote(eventId, choiceId, sheetRow) {
@@ -84,13 +99,13 @@ function validateCandidatesForPublish(arr) {
     const sheetRow = Number(c.sheetRow);
     const label = String(c.label || "").trim();
     const img = String(c.img != null ? c.img : "").trim();
-    if (!ALLOWED_CHOICE_IDS.has(id)) {
+    if (!ROUND1_PAIR_CHOICE_IDS.has(id)) {
       throw new HttpsError("invalid-argument", `无效的 choiceId：${id}`);
     }
     if (seenId.has(id)) {
       throw new HttpsError("invalid-argument", "choiceId 重复。");
     }
-    if (!Number.isInteger(sheetRow) || !ALLOWED_SHEET_ROWS.has(sheetRow)) {
+    if (!Number.isInteger(sheetRow) || !PUBLISH_SHEET_ROWS.has(sheetRow)) {
       throw new HttpsError("invalid-argument", `无效的 sheetRow：${c.sheetRow}`);
     }
     if (seenRow.has(sheetRow)) {
@@ -257,7 +272,7 @@ function assertRound1PairVote(eventId, choiceId, label) {
   if (eventId !== "voiceofnyc-revival") {
     throw new HttpsError("invalid-argument", "不支持的活动。");
   }
-  if (!ALLOWED_CHOICE_IDS.has(choiceId)) {
+  if (!ROUND1_PAIR_CHOICE_IDS.has(choiceId)) {
     throw new HttpsError("invalid-argument", "选手数据无效。");
   }
   if (!label || label.length > 120) {

@@ -8,9 +8,8 @@ window.__VOTE_PAGE_CONFIG = {
   /**
    * 默认投票轮次（与 Cloud Function ALLOWED_ROUND_IDS 一致）。
    * 若 URL 带 ?roundId=xxx 则优先用链接（现场 PPT 可只换链接、不重新部署）。
-   * 例：round1_pk_1～5、round2_revival、final_perf_1～6
    */
-  voteRoundId: "round2_revival",
+  voteRoundId: "round1_pk_1",
   firebase: {
     apiKey: "AIzaSyDvzMnypwlgztNNPG_T6BJbbQ-FzzGp9MU",
     authDomain: "voiceofnyc-e8f3b.firebaseapp.com",
@@ -19,9 +18,35 @@ window.__VOTE_PAGE_CONFIG = {
     appId: "1:797810284806:web:3616adb3b1949919bb2687",
   },
   /**
-   * 多人投票（复活/决赛等）：sheetRow 与 Round2Audience 等一致。
-   * 初赛 round1_pk_*：须 **恰好 2 人**，顺序为 [左, 右]，对应 Round1Audience 该组 B/C 列。
-   * img：相对站点根路径（如 /img/contestants/1.jpg）
+   * 初赛五组固定对阵（与大屏 /img 1～10、Round1Audience 第 2～6 行五对 PK 一致）。
+   * vote.html 在 round1_pk_1～5 时优先用这里两人，覆盖 Firestore voteUi.candidates。
+   * 左=较小号码选手，右=较大号码；表写入仍由 roundId → pairRow（第 2～6 行）+ left/right。
+   */
+  round1PkByRoundId: {
+    round1_pk_1: [
+      { id: "s1", sheetRow: 2, label: "选手 1", img: "/img/contestants/1.jpg" },
+      { id: "s2", sheetRow: 3, label: "选手 2", img: "/img/contestants/2.jpg" },
+    ],
+    round1_pk_2: [
+      { id: "s3", sheetRow: 4, label: "选手 3", img: "/img/contestants/3.jpg" },
+      { id: "s4", sheetRow: 5, label: "选手 4", img: "/img/contestants/4.jpg" },
+    ],
+    round1_pk_3: [
+      { id: "s5", sheetRow: 6, label: "选手 5", img: "/img/contestants/5.jpg" },
+      { id: "s6", sheetRow: 7, label: "选手 6", img: "/img/contestants/6.jpg" },
+    ],
+    round1_pk_4: [
+      { id: "s7", sheetRow: 8, label: "选手 7", img: "/img/contestants/7.jpg" },
+      { id: "s8", sheetRow: 9, label: "选手 8", img: "/img/contestants/8.jpg" },
+    ],
+    round1_pk_5: [
+      { id: "s9", sheetRow: 10, label: "选手 9", img: "/img/contestants/9.jpg" },
+      { id: "s10", sheetRow: 11, label: "选手 10", img: "/img/contestants/10.jpg" },
+    ],
+  },
+  /**
+   * 复活赛 / 决赛等多人选一轮：与 Round2Audience 6 人、表行 2～7 对齐。
+   * 初赛仅作兜底（无 round1PkByRoundId 条目时）；有映射时以 round1PkByRoundId 为准。
    */
   candidates: [
     { id: "s1", sheetRow: 2, label: "选手 1", img: "/img/contestants/1.jpg" },
@@ -29,6 +54,7 @@ window.__VOTE_PAGE_CONFIG = {
     { id: "s3", sheetRow: 4, label: "选手 3", img: "/img/contestants/3.jpg" },
     { id: "s4", sheetRow: 5, label: "选手 4", img: "/img/contestants/4.jpg" },
     { id: "s5", sheetRow: 6, label: "选手 5", img: "/img/contestants/5.jpg" },
+    { id: "s6", sheetRow: 7, label: "选手 6", img: "/img/contestants/6.jpg" },
   ],
   /** 同一浏览器是否只允许投一票（localStorage，按浏览器配置而非设备指纹；换浏览器/无痕可再投） */
   oneVotePerBrowser: true,
