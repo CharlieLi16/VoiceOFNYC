@@ -174,6 +174,17 @@ async function init() {
     return;
   }
 
+  /** Firestore 里常为复活赛副标题；初赛链接下必须改文案，否则会误导观众 */
+  if (round1Pk) {
+    const subEl = document.getElementById("vp-page-subtitle");
+    if (subEl) {
+      subEl.style.whiteSpace = "pre-line";
+      subEl.innerHTML = "";
+      subEl.textContent =
+        "Voice of NYC · 初赛 PK（1v1）\n左右点选支持的一位，再按下方确认投票（每人限一次）";
+    }
+  }
+
   const brand = document.querySelector(".vp-brand");
   if (brand) {
     const meta = document.createElement("p");
