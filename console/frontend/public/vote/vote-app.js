@@ -49,13 +49,31 @@ function validFirebase(fb) {
   );
 }
 
-/** 链接 ?roundId=xxx 优先；与 Cloud Function 一致统一小写，避免初赛未被识别而走 sheetRow 分支报「选手行号无效」 */
+/** 与 Cloud Function normalizeClientRoundId 一致，避免复制链接带进零宽字符导致 round1 识别失败 */
+function normalizeVoteRoundId(raw) {
+  return String(raw ?? "")
+    .replace(/\u200b/g, "")
+    .replace(/\ufeff/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+/** 链接 ?roundId=xxx 优先；统一小写 + 去零宽，避免初赛未被识别而走 sheetRow 分支报「选手行号无效」 */
 function resolveVoteRoundId() {
   const q = new URLSearchParams(window.location.search).get("roundId");
   const fromUrl = q != null ? String(q).trim() : "";
   const fromCfg = String(cfg?.voteRoundId ?? "").trim();
   const raw = fromUrl || fromCfg;
-  return raw ? raw.toLowerCase() : "";
+  return raw ? normalizeVoteRoundId(raw) : "";
+}
+
+/** round1_pk_n → Round1Audience 数据行号 n+1（与 Functions 一致） */
+function pairRowFromRound1PkRoundIdClient(roundId) {
+  const m = /^round1_pk_([1-5])$/.exec(normalizeVoteRoundId(roundId));
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  if (!Number.isInteger(n) || n < 1 || n > 5) return null;
+  return n + 1;
 }
 
 function storageKeyFor(roundId) {
@@ -65,7 +83,7 @@ function storageKeyFor(roundId) {
 
 /** 初赛 1v1：round1_pk_1～5 对应表 Round1Audience 第 2～6 行 */
 function isRound1PkRound(roundId) {
-  return /^round1_pk_[1-5]$/.test(String(roundId || "").trim().toLowerCase());
+  return /^round1_pk_[1-5]$/.test(normalizeVoteRoundId(roundId));
 }
 
 /** 本机 Vite 开发：避免线上 Firestore voteUi（复活 6 人、旧 sheetRow）覆盖本地 vote-config，导致初赛 UI/行号错乱 */
@@ -369,7 +387,7 @@ async function init() {
           choiceId: selected.id,
           label: selected.label,
           voteCode,
-          roundId: resolvedRoundId,
+          roundId: String(resolvedRoundId),
         };
         if (round1Pk) {
           const ps = selected.pairSide;
@@ -379,6 +397,8 @@ async function init() {
             return;
           }
           payload.pairSide = ps;
+          const pr = pairRowFromRound1PkRoundIdClient(resolvedRoundId);
+          if (pr != null) payload.pairRow = pr;
         } else {
           const sr = Number(selected.sheetRow);
           if (!Number.isInteger(sr) || sr < 2) {

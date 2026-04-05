@@ -45,9 +45,18 @@ function assertAllowedRoundId(roundId) {
   }
 }
 
-/** round1_pk_1 → 表数据行 2 … round1_pk_5 → 行 6；非初赛返回 null（roundId 会先 trim + lower） */
+/** 去掉零宽字符等，避免 URL/复制带进 invisible 字符导致 round1 识别失败 */
+function normalizeClientRoundId(raw) {
+  return String(raw ?? "")
+    .replace(/\u200b/g, "")
+    .replace(/\ufeff/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+/** round1_pk_1 → 表数据行 2 … round1_pk_5 → 行 6；非初赛返回 null */
 function pairRowFromRound1PkRoundId(roundId) {
-  const m = /^round1_pk_([1-5])$/.exec(String(roundId || "").trim().toLowerCase());
+  const m = /^round1_pk_([1-5])$/.exec(normalizeClientRoundId(roundId));
   if (!m) return null;
   const n = parseInt(m[1], 10);
   if (!Number.isInteger(n) || n < 1 || n > 5) return null;
@@ -344,14 +353,22 @@ exports.submitVote = onCall(
     const sheetRow = Number(data.sheetRow);
     const label = String(data.label || "").trim();
     const voteCodeRaw = data.voteCode != null ? String(data.voteCode) : "";
-    const roundIdNorm = String(data.roundId || "").trim().toLowerCase();
-    const pairRow = pairRowFromRound1PkRoundId(roundIdNorm);
+    const roundIdNorm = normalizeClientRoundId(
+      data.roundId != null ? data.roundId : data.round_id != null ? data.round_id : ""
+    );
+    let pairRow = pairRowFromRound1PkRoundId(roundIdNorm);
     const pairSideRaw = String(data.pairSide || "").trim().toLowerCase();
-    const isRound1Pair = pairRow != null;
+    const pairRowHint = Number(data.pairRow);
 
     if (!eventId || !choiceId || !label) {
       throw new HttpsError("invalid-argument", "缺少必填字段。");
     }
+
+    if (pairRow != null && Number.isInteger(pairRowHint) && pairRowHint !== pairRow) {
+      throw new HttpsError("invalid-argument", "初赛 pairRow 与 roundId 不一致。");
+    }
+
+    const isRound1Pair = pairRow != null;
 
     if (isRound1Pair) {
       assertRound1PairVote(eventId, choiceId, label);
@@ -360,7 +377,10 @@ exports.submitVote = onCall(
       }
     } else {
       if (!Number.isInteger(sheetRow) || sheetRow < 2) {
-        throw new HttpsError("invalid-argument", "选手行号无效。");
+        throw new HttpsError(
+          "invalid-argument",
+          "选手行号无效。初赛 PK 请使用 roundId=round1_pk_1～5 并部署最新 submitVote；复活/决赛需合法 sheetRow。"
+        );
       }
       assertAllowedVote(eventId, choiceId, sheetRow);
     }
