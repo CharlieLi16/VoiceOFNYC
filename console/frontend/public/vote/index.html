@@ -3,12 +3,77 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>跳转中…</title>
-    <script>
-      location.replace("vote.html" + location.search + location.hash);
-    </script>
+    <title>Voice of NYC · 投票调度（工作人员）</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./vote-hub.css" />
   </head>
   <body>
-    <p><a href="vote.html">进入投票页</a></p>
+    <script>
+      (function () {
+        if (new URLSearchParams(location.search).get("roundId")) {
+          location.replace("vote.html" + location.search + location.hash);
+        }
+      })();
+    </script>
+    <div class="vh-root">
+      <div class="vh-warn">勿向观众展示本页 · 观众请使用 <code>vote.html</code></div>
+      <h1>现场投票调度</h1>
+      <p class="vh-muted">
+        观众入口（二维码 / PPT）：下方各轮链接 · 主控制台（大屏选手库）：
+        <a href="/admin">/admin</a>
+      </p>
+
+      <section class="vh-section">
+        <h2>环节链接</h2>
+        <p class="vh-muted">每场换链接即可，无需重新部署（参数 <code>roundId</code>）。</p>
+        <div class="vh-table-wrap">
+          <table class="vh-table">
+            <thead>
+              <tr>
+                <th>环节</th>
+                <th>roundId</th>
+                <th>完整 URL</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="vh-rounds-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="vh-section">
+        <h2>远程选手与标题</h2>
+        <p class="vh-muted">发布后写入 Firestore；观众打开 <code>vote.html</code> 时会覆盖 <code>vote-config.js</code> 默认。</p>
+        <label class="vh-label">
+          <span>页面标题（可选，留空则用 vote.html 默认）</span>
+          <input type="text" id="vh-page-title" class="vh-input" maxlength="120" placeholder="心动的声音" />
+        </label>
+        <label class="vh-label">
+          <span>副标题（可选，支持换行）</span>
+          <textarea id="vh-subtitle" class="vh-textarea" maxlength="400" placeholder="Voice of NYC · …"></textarea>
+        </label>
+        <h2 style="margin-top: 1rem; font-size: 1rem">选手列表（1～6 人）</h2>
+        <div id="vh-candidates"></div>
+        <button type="button" class="vh-btn" id="vh-add-row">+ 添加选手行</button>
+        <label class="vh-label" style="margin-top: 1rem">
+          <span>发布密钥（<code>STAFF_PUBLISH_SECRET</code>，与 Firebase Functions 一致）</span>
+          <input type="password" id="vh-secret" class="vh-input" autocomplete="off" />
+        </label>
+        <button type="button" class="vh-btn vh-btn--primary" id="vh-publish">发布到 Firestore</button>
+        <div id="vh-msg"></div>
+      </section>
+
+      <p class="vh-foot">
+        部署：<code>firebase deploy --only firestore:rules,functions</code> 后设置 Secret
+        <code>STAFF_PUBLISH_SECRET</code>。详见 <code>console/docs/README-vote-firebase-static.md</code>。
+      </p>
+    </div>
+    <script src="./vote-config.js"></script>
+    <script type="module" src="./vote-hub.js"></script>
   </body>
 </html>

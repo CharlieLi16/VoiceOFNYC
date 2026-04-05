@@ -13,6 +13,7 @@ const crypto = require("crypto");
 
 const voteIngestUrl = defineSecret("VOTE_INGEST_URL");
 const voteCodesSecret = defineSecret("VOTE_CODES");
+const staffPublishSecret = defineSecret("STAFF_PUBLISH_SECRET");
 const voteIngestSecret = defineString("VOTE_INGEST_SECRET", {
   default: "",
   description: "与 Apps Script 脚本属性 VOTE_INGEST_SECRET 一致；未设脚本属性可留空",
@@ -44,16 +45,59 @@ function assertAllowedRoundId(roundId) {
   }
 }
 
+const ALLOWED_CHOICE_IDS = new Set(["s1", "s2", "s3", "s4", "s5", "s6"]);
+const ALLOWED_SHEET_ROWS = new Set([2, 3, 4, 5, 6, 7]);
+
 /** 与 firestore.rules / vote-config 一致时可收紧；含决赛第 6 人（s6 / 第 7 行） */
 function assertAllowedVote(eventId, choiceId, sheetRow) {
   if (eventId !== "voiceofnyc-revival") {
     throw new HttpsError("invalid-argument", "不支持的活动。");
   }
-  const allowedChoice = new Set(["s1", "s2", "s3", "s4", "s5", "s6"]);
-  const allowedRow = new Set([2, 3, 4, 5, 6, 7]);
-  if (!allowedChoice.has(choiceId) || !allowedRow.has(sheetRow)) {
+  if (!ALLOWED_CHOICE_IDS.has(choiceId) || !ALLOWED_SHEET_ROWS.has(sheetRow)) {
     throw new HttpsError("invalid-argument", "选手数据无效。");
   }
+}
+
+/**
+ * @param {unknown} arr
+ * @returns {{ id: string, sheetRow: number, label: string, img: string }[]}
+ */
+function validateCandidatesForPublish(arr) {
+  if (!Array.isArray(arr) || arr.length < 1 || arr.length > 6) {
+    throw new HttpsError("invalid-argument", "candidates 须为 1～6 项的非空数组。");
+  }
+  const seenId = new Set();
+  const seenRow = new Set();
+  const out = [];
+  for (const raw of arr) {
+    const c = raw && typeof raw === "object" ? raw : {};
+    const id = String(c.id || "").trim();
+    const sheetRow = Number(c.sheetRow);
+    const label = String(c.label || "").trim();
+    const img = String(c.img != null ? c.img : "").trim();
+    if (!ALLOWED_CHOICE_IDS.has(id)) {
+      throw new HttpsError("invalid-argument", `无效的 choiceId：${id}`);
+    }
+    if (seenId.has(id)) {
+      throw new HttpsError("invalid-argument", "choiceId 重复。");
+    }
+    if (!Number.isInteger(sheetRow) || !ALLOWED_SHEET_ROWS.has(sheetRow)) {
+      throw new HttpsError("invalid-argument", `无效的 sheetRow：${c.sheetRow}`);
+    }
+    if (seenRow.has(sheetRow)) {
+      throw new HttpsError("invalid-argument", "sheetRow 重复。");
+    }
+    if (label.length < 1 || label.length > 120) {
+      throw new HttpsError("invalid-argument", "label 长度须在 1～120。");
+    }
+    if (img.length > 500) {
+      throw new HttpsError("invalid-argument", "img 路径过长。");
+    }
+    seenId.add(id);
+    seenRow.add(sheetRow);
+    out.push({ id, sheetRow, label, img });
+  }
+  return out;
 }
 
 /** null = DISABLED；空 Set = Firestore 票；非空 Set = 内联口令 */
@@ -157,6 +201,47 @@ async function postAddFinalVoteToSheet(row, url, ingestSecretStr) {
   }
   return { ok: true, ambiguous: true };
 }
+
+/** 工作人员发布投票页 UI 到 Firestore events/{eventId}/site/voteUi */
+exports.publishVoteUi = onCall(
+  {
+    secrets: [staffPublishSecret],
+    region: "us-east4",
+    cors: true,
+  },
+  async (request) => {
+    const data = request.data || {};
+    const eventId = String(data.eventId || "").trim();
+    const secret = String(data.secret || "").trim();
+    const expected = (staffPublishSecret.value() || "").trim();
+    if (eventId !== "voiceofnyc-revival") {
+      throw new HttpsError("invalid-argument", "不支持的活动。");
+    }
+    if (!expected || secret !== expected) {
+      throw new HttpsError("permission-denied", "发布密钥无效。");
+    }
+    const candidates = validateCandidatesForPublish(data.candidates);
+    const pageTitle =
+      data.pageTitle != null ? String(data.pageTitle).trim().slice(0, 120) : "";
+    const subtitle =
+      data.subtitle != null ? String(data.subtitle).trim().slice(0, 400) : "";
+
+    await admin
+      .firestore()
+      .collection("events")
+      .doc(eventId)
+      .collection("site")
+      .doc("voteUi")
+      .set({
+        candidates,
+        pageTitle: pageTitle || null,
+        subtitle: subtitle || null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    return { ok: true };
+  }
+);
 
 exports.submitVote = onCall(
   {

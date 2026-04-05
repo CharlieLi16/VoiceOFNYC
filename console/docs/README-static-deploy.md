@@ -96,7 +96,7 @@ server {
 
 若你只做 **一张投票页**、提交走 **Google Apps Script Web App**，可以 **不用** 整包 React：一个 `index.html` + `fetch` 即可，丢进 `dist` 或任意静态空间都行。本仓库 **整包控制台** 仍按上面 **Vite build** 流程部署。
 
-另有一套 **Firebase 写入** 的独立静态包，源码在 **`console/frontend/public/vote/`**，构建后入口为 **`dist/vote/vote.html`**（`index.html` 跳转用）。说明见 **[README-vote-firebase-static.md](./README-vote-firebase-static.md)**。
+另有一套 **Firebase 写入** 的独立静态包，源码在 **`console/frontend/public/vote/`**：观众 **`dist/vote/vote.html`**，工作人员调度 **`dist/vote/index.html`**。说明见 **[README-vote-firebase-static.md](./README-vote-firebase-static.md)**。
 
 ## 6. 常见坑
 

@@ -1,44 +1,59 @@
 # Firebase 静态投票页（`public/vote/`）
 
-构建后路径：**`dist/vote/vote.html`**（主入口）。同目录下 **`index.html`** 仅作跳转 `vote.html` 并**保留查询参数**（兼容旧链接 `/vote/`）。
+## 入口分工
+
+| 文件 | 受众 | 说明 |
+|------|------|------|
+| **`vote.html`** | 观众 | 实际投票页；支持 `?roundId=`；启动时读取 Firestore **`events/{eventId}/site/voteUi`** 覆盖选手与标题（无文档则用 [`vote-config.js`](../frontend/public/vote/vote-config.js)）。 |
+| **`index.html`** | 工作人员 | **调度后台**：12 个环节的链接（复制 / 打开）、编辑选手与标题并 **发布** 到 Firestore（Callable **`publishVoteUi`**）。若 URL **已带 `roundId`**，会 **自动跳转到 `vote.html`**，因此旧链接 `…/vote/?roundId=…` 仍给观众用。 |
+
+构建后路径在 **`dist/vote/`** 下同名文件。
 
 **容量**：页面为纯静态资源（HTML/CSS/JS + CDN），Vercel / CDN 可轻松承载 **200+** 观众同时打开；写票走 **Firebase Callable + Firestore**，一般现场规模下无需自建动态站点。
 
+## 远程选手与标题（`voteUi`）
+
+- Firestore 文档：`events/voiceofnyc-revival/site/voteUi`  
+  字段：`candidates`（`{ id, sheetRow, label, img }[]`）、可选 `pageTitle` / `subtitle`、`updatedAt`。  
+- **规则**：[`firebase-vote/firestore.rules`](../firebase-vote/firestore.rules) 允许该文档 **公开读**、**禁止客户端写**；写入仅通过 Cloud Function。  
+- **发布**：在 **`index.html`** 填 **`STAFF_PUBLISH_SECRET`**（与 Functions Secret 一致）后点「发布」。首次部署后需：
+
+```bash
+cd console/firebase-vote
+firebase functions:secrets:set STAFF_PUBLISH_SECRET
+npx firebase-tools@latest deploy --only functions,firestore:rules
+```
+
+**安全**：密钥会经浏览器发给 Callable；勿把 **`index.html` 链接发给观众**；生产环境可后续改为 Firebase Auth 限定工作人员。
+
 ## 票码与轮次（`VOTE_CODES=__TICKETS__`）
 
-- Firestore：`events/{eventId}/tickets/{CODE}`。每个码在 **每个 `voteRoundId` 下各可成功投 1 次**（字段 `usedRounds` 记录已用轮次）。
+- Firestore：`events/{eventId}/tickets/{CODE}`。每个码在 **每个 `roundId` 下各可成功投 1 次**（`usedRounds`）。
 - Cloud Function [`firebase-vote/functions/index.js`](../firebase-vote/functions/index.js) 内 **`ALLOWED_ROUND_IDS`** 为唯一合法值。
-- **轮次来源（二选一，URL 优先）**：在投票页地址后加 **`?roundId=round2_revival`**（或任一合法 id）。未带参数时使用 **`vote-config.js` 的 `voteRoundId`**。现场可在 PPT 里只放不同链接切环节，**无需每轮重新部署**（同一 build 即可）。
-- **合法 `voteRoundId`（共 12 个）**  
-  - 第一轮 PK 五组：`round1_pk_1` … `round1_pk_5`  
-  - 复活投票：`round2_revival`  
-  - 决赛每人一场：`final_perf_1` … `final_perf_6`
+- **轮次**：`vote.html` 上 **`?roundId=` 优先**，否则用 **`vote-config.js` 的 `voteRoundId`**。也可使用 **`…/vote/?roundId=…`**（经 `index.html` 跳转至 `vote.html`）。工作人员也可在 **`index.html`** 表格里复制各环节完整链接。
 
-- **只换环节、选手与表仍与当前页一致**：改链接查询参数即可，例如  
-  `https://你的域名/vote/vote.html?roundId=round1_pk_2`  
-  （`https://你的域名/vote/?roundId=…` 会经 `index.html` 跳到同一页。）  
-- **换环节且选手/表行不同**（如决赛 6 人）：仍需改 `vote-config.js` 里 `candidates` 等 → build → 部署；`roundId` 仍可用 URL 指定。  
-- **无需**为每轮重新印票码（同一批码可跨轮使用，每轮各 1 次）。
+**合法 `roundId`（共 12 个）**：`round1_pk_1`～`5`、`round2_revival`、`final_perf_1`～`6`。
+
+**无需**为每轮重新印票码（同一批码可跨轮使用，每轮各 1 次）。
 
 ## 其它 `VOTE_CODES` 模式
 
-- **`DISABLED`**：不校验码；`roundId` 可不传（仍建议在 config 里写 `voteRoundId` 便于审计）。
-- **内联码列表**：不扣 Firestore 票；`roundId` 不参与扣次（多轮防刷请用 `__TICKETS__`）。
+- **`DISABLED`**：不校验码。
+- **内联码列表**：不扣 Firestore 票；多轮防刷请用 `__TICKETS__`。
 
 ## 浏览器「每机一票」
 
-`vote-app.js` 的 localStorage key 含 **`eventId` + 实际生效的 roundId**（URL 或配置），因此 **每一轮** 在同一浏览器可各投一次（与 `oneVotePerBrowser` / `lockBrowserAfterSubmit` 配置一致）。
+localStorage 按 **`eventId` + 实际 roundId** 区分环节。
 
 ## 部署顺序
 
-1. 部署 **Firestore 规则**：[`firebase-vote/firestore.rules`](../firebase-vote/firestore.rules)（静态 `vote-static-page` 写入需带 `roundId`）。
-2. 部署 **Cloud Functions**（`firebase deploy --only functions` 等）。
-3. 发布前端 **`dist`**（含 `vote/`）。
+1. `firestore:rules` + `functions`（含 **`publishVoteUi`**、**`STAFF_PUBLISH_SECRET`**）。
+2. 发布前端 **`dist`**（含 **`vote/index.html`**、**`vote/vote.html`**）。
 
 ## 旧数据（仅 `used: true`、无 `usedRounds`）
 
-此类文档来自旧版「全局一次」逻辑：**该码在 `__TICKETS__` 下无法再投任何新轮次**。若需同一批码参与多轮，请在 Firestore 中删除对应 ticket 文档后重新 `seed-tickets.mjs` 写入，或手工改为 `used: false` 并补上合适的 `usedRounds`（慎用）。
+旧版「全局一次」票码无法再用于 `__TICKETS__` 新轮次，除非在 Firestore 中重置或重 seed。见前文「票码」说明。
 
 ## 选手与行号
 
-Callable 与规则允许 **`s1`～`s6`**、**`sheetRow` 2～7**（决赛第六人可用 `s6` + 第 7 行）。当前示例页为 5 人复活；决赛 6 人时在 `vote-config.js` 里增加候选人并核对 Google 表行号。
+Callable / `publishVoteUi` 允许 **`s1`～`s6`**、**`sheetRow` 2～7**。大屏 lineup 仍在主站 **`/admin`**。

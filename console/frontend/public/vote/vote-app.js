@@ -3,6 +3,7 @@
  * 大屏仍读 Google 表；审计记录在 Firestore votes（source=vote-callable）
  */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 
 const cfg = window.__VOTE_PAGE_CONFIG;
@@ -81,7 +82,16 @@ function humanizeVoteError(err) {
   return msg || "提交失败，请检查网络后重试。";
 }
 
-function init() {
+function normalizeCandidate(c) {
+  return {
+    id: String(c.id || "").trim(),
+    sheetRow: Number(c.sheetRow),
+    label: String(c.label || "").trim(),
+    img: String(c.img != null ? c.img : "").trim(),
+  };
+}
+
+async function init() {
   if (!cfg || !gridEl || !submitBtn) return;
 
   if (!validFirebase(cfg.firebase)) {
@@ -104,6 +114,45 @@ function init() {
     return;
   }
 
+  const app = initializeApp(cfg.firebase);
+  const db = getFirestore(app);
+
+  let displayCfg = {
+    ...cfg,
+    candidates: Array.isArray(cfg.candidates) ? cfg.candidates.map(normalizeCandidate) : [],
+  };
+
+  try {
+    const snap = await getDoc(doc(db, "events", displayCfg.eventId, "site", "voteUi"));
+    if (snap.exists()) {
+      const d = snap.data();
+      if (Array.isArray(d.candidates) && d.candidates.length) {
+        displayCfg = {
+          ...displayCfg,
+          candidates: d.candidates.map(normalizeCandidate),
+        };
+      }
+      const titleEl = document.getElementById("vp-page-title");
+      const subEl = document.getElementById("vp-page-subtitle");
+      if (typeof d.pageTitle === "string" && d.pageTitle.trim() && titleEl) {
+        titleEl.textContent = d.pageTitle.trim();
+      }
+      if (typeof d.subtitle === "string" && d.subtitle.trim() && subEl) {
+        subEl.style.whiteSpace = "pre-line";
+        subEl.innerHTML = "";
+        subEl.textContent = d.subtitle.trim();
+      }
+    }
+  } catch (e) {
+    console.warn("voteUi getDoc", e);
+  }
+
+  if (!displayCfg.candidates.length) {
+    showBanner("未配置选手列表（vote-config 或 Firestore voteUi）。");
+    submitBtn.disabled = true;
+    return;
+  }
+
   const brand = document.querySelector(".vp-brand");
   if (brand) {
     const meta = document.createElement("p");
@@ -113,27 +162,26 @@ function init() {
   }
 
   const shouldLockBrowser = () => {
-    if (!cfg.oneVotePerBrowser) return false;
-    if (cfg.requireVoteCode === false) return cfg.lockBrowserAfterSubmit !== false;
-    return cfg.lockBrowserAfterSubmit === true;
+    if (!displayCfg.oneVotePerBrowser) return false;
+    if (displayCfg.requireVoteCode === false) return displayCfg.lockBrowserAfterSubmit !== false;
+    return displayCfg.lockBrowserAfterSubmit === true;
   };
 
   if (shouldLockBrowser() && localStorage.getItem(storageKeyFor(resolvedRoundId)) === "1") {
     document.querySelector(".vp-dock")?.remove();
-    showDone(cfg);
+    showDone(displayCfg);
     return;
   }
 
-  const app = initializeApp(cfg.firebase);
-  const region = cfg.functionsRegion || "us-east4";
+  const region = displayCfg.functionsRegion || "us-east4";
   const functions = getFunctions(app, region);
-  if (cfg.functionsEmulatorHost) {
-    const [host, port] = cfg.functionsEmulatorHost.split(":");
+  if (displayCfg.functionsEmulatorHost) {
+    const [host, port] = displayCfg.functionsEmulatorHost.split(":");
     connectFunctionsEmulator(functions, host || "localhost", Number(port) || 5001);
   }
   const submitVoteFn = httpsCallable(functions, "submitVote");
 
-  if (cfg.requireVoteCode !== false) {
+  if (displayCfg.requireVoteCode !== false) {
     if (codeWrap) codeWrap.hidden = false;
   } else {
     codeWrap?.remove();
@@ -143,14 +191,14 @@ function init() {
   let selected = null;
 
   function syncSubmitEnabled() {
-    const needCode = cfg.requireVoteCode !== false;
+    const needCode = displayCfg.requireVoteCode !== false;
     const codeOk = !needCode || (codeInput && codeInput.value.trim().length > 0);
     submitBtn.disabled = !selected || !codeOk;
   }
 
   codeInput?.addEventListener("input", syncSubmitEnabled, { passive: true });
 
-  for (const c of cfg.candidates) {
+  for (const c of displayCfg.candidates) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "vp-card";
@@ -194,7 +242,7 @@ function init() {
     "click",
     async () => {
       if (!selected) return;
-      const needCode = cfg.requireVoteCode !== false;
+      const needCode = displayCfg.requireVoteCode !== false;
       const voteCode = needCode && codeInput ? codeInput.value.trim().toUpperCase() : "";
       if (needCode && !voteCode) {
         showBanner("请先填写投票码。");
@@ -204,7 +252,7 @@ function init() {
       showBanner("提交中…");
       try {
         const { data } = await submitVoteFn({
-          eventId: cfg.eventId,
+          eventId: displayCfg.eventId,
           choiceId: selected.id,
           sheetRow: selected.sheetRow,
           label: selected.label,
@@ -217,7 +265,7 @@ function init() {
         } else {
           showBanner("投票成功，感谢参与！", true);
         }
-        showDone(cfg, selected.label, Boolean(data?.sheetUncertain));
+        showDone(displayCfg, selected.label, Boolean(data?.sheetUncertain));
       } catch (e) {
         console.error(e);
         showBanner(humanizeVoteError(e));
@@ -240,4 +288,7 @@ function showDone(config, name, sheetUncertain) {
   `;
 }
 
-init();
+init().catch((e) => {
+  console.error(e);
+  showBanner("页面初始化失败，请刷新重试。");
+});

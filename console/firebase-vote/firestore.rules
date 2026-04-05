@@ -53,5 +53,13 @@ service cloud.firestore {
     match /events/{eventId}/tickets/{code} {
       allow read, write: if false;
     }
+
+    /**
+     * 观众投票页远程 UI（candidates / 标题）；仅 Cloud Function publishVoteUi 写入。
+     */
+    match /events/{eventId}/site/{docId} {
+      allow read: if eventId == 'voiceofnyc-revival' && docId == 'voteUi';
+      allow write: if false;
+    }
   }
 }
