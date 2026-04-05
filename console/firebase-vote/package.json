@@ -1,0 +1,7 @@
+{
+  "name": "voiceofnyc-firebase-vote",
+  "private": true,
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  }
+}

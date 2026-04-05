@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchRound1StagePairs } from "@/api/client";
+import { tryParseResponseJson } from "@/api/safeResponseJson";
 import { parseRound1PairTotalsFromRow } from "@/api/sheetsClient";
 import { getSheetsPollConfig } from "@/config/sheetsEnv";
 import { useSheetRangePoll } from "@/hooks/useSheetRangePoll";
@@ -90,7 +91,10 @@ export default function Round1PairStage() {
   useEffect(() => {
     let cancelled = false;
     fetch("/round1-pairs.json")
-      .then((r) => (r.ok ? r.json() : []))
+      .then(async (r) => {
+        const data = await tryParseResponseJson<unknown>(r);
+        return data ?? [];
+      })
       .then((data: unknown) => {
         if (cancelled) return;
         setFallbackList(normalizeFallbackList(data));

@@ -1,4 +1,5 @@
 import type { Round1PairMeta, Round2LineupSlot, StatePayload } from "./types";
+import { parseResponseAsJson } from "./safeResponseJson";
 
 /** 静态托管前端时设为后端根地址，例如 http://127.0.0.1:8765（须与后端 CORS 一致） */
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
@@ -29,7 +30,7 @@ export async function fetchState(): Promise<StatePayload> {
     );
   }
   if (!res.ok) throw new Error(await readError(res));
-  return res.json() as Promise<StatePayload>;
+  return parseResponseAsJson<StatePayload>(res);
 }
 
 export async function patchScores(
@@ -45,7 +46,7 @@ export async function patchScores(
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await readError(res));
-  return res.json() as Promise<StatePayload & { ok: boolean }>;
+  return parseResponseAsJson<StatePayload & { ok: boolean }>(res);
 }
 
 export async function importContestants(
@@ -57,7 +58,7 @@ export async function importContestants(
     body: JSON.stringify({ contestants }),
   });
   if (!res.ok) throw new Error(await readError(res));
-  return res.json() as Promise<StatePayload & { ok: boolean }>;
+  return parseResponseAsJson<StatePayload & { ok: boolean }>(res);
 }
 
 export type Round1StagePairsResponse = {
@@ -70,7 +71,7 @@ export type Round1StagePairsResponse = {
 export async function fetchRound1StagePairs(): Promise<Round1StagePairsResponse> {
   const res = await fetch(apiUrl("/api/stage/round1-pairs"));
   if (!res.ok) throw new Error(await readError(res));
-  const data = (await res.json()) as { pairs?: unknown; persisted?: boolean };
+  const data = await parseResponseAsJson<{ pairs?: unknown; persisted?: boolean }>(res);
   if (!Array.isArray(data.pairs) || data.pairs.length !== 5) {
     throw new Error("round1-pairs 响应格式错误");
   }
@@ -88,7 +89,7 @@ export async function saveRound1StagePairs(pairs: Round1PairMeta[]): Promise<Rou
     body: JSON.stringify({ pairs }),
   });
   if (!res.ok) throw new Error(await readError(res));
-  const data = (await res.json()) as { pairs?: Round1PairMeta[]; persisted?: boolean };
+  const data = await parseResponseAsJson<{ pairs?: Round1PairMeta[]; persisted?: boolean }>(res);
   return {
     pairs: data.pairs ?? pairs,
     persisted: Boolean(data.persisted),
@@ -100,7 +101,7 @@ export async function importRound1PairsFromPublicFiles(): Promise<Round1StagePai
     method: "POST",
   });
   if (!res.ok) throw new Error(await readError(res));
-  const data = (await res.json()) as { pairs?: Round1PairMeta[]; persisted?: boolean };
+  const data = await parseResponseAsJson<{ pairs?: Round1PairMeta[]; persisted?: boolean }>(res);
   if (!Array.isArray(data.pairs)) throw new Error("导入响应无效");
   return {
     pairs: data.pairs,
@@ -114,7 +115,7 @@ export async function applyRound1NumberedDefaults(): Promise<Round1StagePairsRes
     method: "POST",
   });
   if (!res.ok) throw new Error(await readError(res));
-  const data = (await res.json()) as { pairs?: Round1PairMeta[]; persisted?: boolean };
+  const data = await parseResponseAsJson<{ pairs?: Round1PairMeta[]; persisted?: boolean }>(res);
   if (!Array.isArray(data.pairs)) throw new Error("响应无效");
   return { pairs: data.pairs, persisted: Boolean(data.persisted) };
 }
@@ -127,7 +128,7 @@ export type Round2LineupResponse = {
 export async function fetchRound2Lineup(): Promise<Round2LineupResponse> {
   const res = await fetch(apiUrl("/api/stage/round2-lineup"));
   if (!res.ok) throw new Error(await readError(res));
-  const data = (await res.json()) as { slots?: unknown; persisted?: boolean };
+  const data = await parseResponseAsJson<{ slots?: unknown; persisted?: boolean }>(res);
   if (!Array.isArray(data.slots) || data.slots.length !== 6) {
     throw new Error("round2-lineup 响应格式错误");
   }
@@ -145,7 +146,7 @@ export async function saveRound2Lineup(slots: Round2LineupSlot[]): Promise<Round
     body: JSON.stringify({ slots }),
   });
   if (!res.ok) throw new Error(await readError(res));
-  const data = (await res.json()) as { slots?: Round2LineupSlot[]; persisted?: boolean };
+  const data = await parseResponseAsJson<{ slots?: Round2LineupSlot[]; persisted?: boolean }>(res);
   return {
     slots: data.slots ?? slots,
     persisted: Boolean(data.persisted),
@@ -157,7 +158,7 @@ export async function importRound2LineupFromPublicFiles(): Promise<Round2LineupR
     method: "POST",
   });
   if (!res.ok) throw new Error(await readError(res));
-  const data = (await res.json()) as { slots?: Round2LineupSlot[]; persisted?: boolean };
+  const data = await parseResponseAsJson<{ slots?: Round2LineupSlot[]; persisted?: boolean }>(res);
   if (!Array.isArray(data.slots)) throw new Error("导入响应无效");
   return {
     slots: data.slots,

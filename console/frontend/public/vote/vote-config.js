@@ -3,8 +3,8 @@
  * 复制自 vote-config.example.js 后按项目修改即可。
  */
 window.__VOTE_PAGE_CONFIG = {
-  /** Firestore `events/{eventId}/…` 整场活动 ID（与轮次 round2_revival 无关） */
-  eventId: "voiceofnyc",
+  /** Firestore 里用于分区投票；Cloud Function 可按 eventId 过滤 */
+  eventId: "voiceofnyc-revival",
   /**
    * 默认投票轮次（与 Cloud Function ALLOWED_ROUND_IDS 一致）。
    * 若 URL 带 ?roundId=xxx 则优先用链接（现场 PPT 可只换链接、不重新部署）。
@@ -19,7 +19,7 @@ window.__VOTE_PAGE_CONFIG = {
   },
   /**
    * 初赛五组固定对阵（与大屏 /img 1～10、Round1Audience 第 2～6 行五对 PK 一致）。
-   * vote.html 在 round1_pk_1～5 时优先用这里两人，覆盖 Firestore voteUi.candidates。
+   * 当 Firestore 未发布该轮的 voteUi.rounds.{roundId}.candidates 时，vote.html 用本映射；若已按轮发布则以 Firestore 为准。
    * 左=较小号码、右=较大号码。**sheetRow 填该组在表上的数据行（2～6），两人相同**（左 B 列 / 右 C 列）；写票只认 roundId+pairSide。
    */
   round1PkByRoundId: {

@@ -24,7 +24,7 @@ if (!admin.apps.length) {
 }
 
 /** 与 docs 中「每轮一票」约定一致；换轮改 voteRoundId 并重新部署投票页 */
-const ALLOWED_ROUND_IDS = new Set([
+const ROUND_IDS_ORDERED = [
   "round1_pk_1",
   "round1_pk_2",
   "round1_pk_3",
@@ -37,16 +37,15 @@ const ALLOWED_ROUND_IDS = new Set([
   "final_perf_4",
   "final_perf_5",
   "final_perf_6",
-]);
+];
+
+const ALLOWED_ROUND_IDS = new Set(ROUND_IDS_ORDERED);
 
 function assertAllowedRoundId(roundId) {
   if (!roundId || !ALLOWED_ROUND_IDS.has(roundId)) {
     throw new HttpsError("invalid-argument", "无效或不允许的投票轮次 roundId。");
   }
 }
-
-/** Firestore `events/{eventId}/…` 分区；与轮次 `round2_revival` 无关 */
-const ALLOWED_EVENT_ID = "voiceofnyc";
 
 /** 去掉零宽字符等，避免 URL/复制带进 invisible 字符导致 round1 识别失败 */
 function normalizeClientRoundId(raw) {
@@ -86,7 +85,7 @@ const PUBLISH_SHEET_ROWS = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
 /** 与 firestore.rules / vote-config 一致时可收紧；含决赛第 6 人（s6 / 第 7 行） */
 function assertAllowedVote(eventId, choiceId, sheetRow) {
-  if (eventId !== ALLOWED_EVENT_ID) {
+  if (eventId !== "voiceofnyc-revival") {
     throw new HttpsError("invalid-argument", "不支持的活动。");
   }
   if (!ALLOWED_CHOICE_IDS.has(choiceId) || !ALLOWED_SHEET_ROWS.has(sheetRow)) {
@@ -144,6 +143,67 @@ function validateCandidatesForPublish(arr) {
     out.push({ id, sheetRow, label, img });
   }
   return out;
+}
+
+/**
+ * 按环节校验并规范化 voteUi.rounds[roundId]（空 candidates 仅标题也允许）。
+ * 初赛 round1_pk_* 一旦有选手则须恰好 2 人。
+ */
+function validateOptionalRoundBlock(roundId, block) {
+  const rid = String(roundId || "").trim();
+  if (!ALLOWED_ROUND_IDS.has(rid)) {
+    throw new HttpsError("invalid-argument", `无效的 roundId：${rid}`);
+  }
+  if (!block || typeof block !== "object" || Array.isArray(block)) {
+    return { candidates: [], pageTitle: null, subtitle: null };
+  }
+  const pageTitle =
+    block.pageTitle != null ? String(block.pageTitle).trim().slice(0, 120) : "";
+  const subtitle =
+    block.subtitle != null ? String(block.subtitle).trim().slice(0, 400) : "";
+  const arr = block.candidates;
+  if (!Array.isArray(arr) || arr.length === 0) {
+    return {
+      candidates: [],
+      pageTitle: pageTitle || null,
+      subtitle: subtitle || null,
+    };
+  }
+  if (/^round1_pk_[1-5]$/.test(rid) && arr.length !== 2) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${rid} 须恰好 2 名选手（第 1 位左侧 / 第 2 位右侧）。`
+    );
+  }
+  const candidates = validateCandidatesForPublish(arr);
+  return {
+    candidates,
+    pageTitle: pageTitle || null,
+    subtitle: subtitle || null,
+  };
+}
+
+/** 写入顶层 candidates 供旧版前端兜底 */
+function legacyMirrorFromRounds(roundsOut) {
+  const revival = roundsOut.round2_revival;
+  if (revival && Array.isArray(revival.candidates) && revival.candidates.length) {
+    return {
+      candidates: revival.candidates,
+      pageTitle: revival.pageTitle || null,
+      subtitle: revival.subtitle || null,
+    };
+  }
+  for (const rid of ROUND_IDS_ORDERED) {
+    const b = roundsOut[rid];
+    if (b && Array.isArray(b.candidates) && b.candidates.length) {
+      return {
+        candidates: b.candidates,
+        pageTitle: b.pageTitle || null,
+        subtitle: b.subtitle || null,
+      };
+    }
+  }
+  return { candidates: [], pageTitle: null, subtitle: null };
 }
 
 /** null = DISABLED；空 Set = Firestore 票；非空 Set = 内联口令 */
@@ -291,7 +351,7 @@ async function postAddPairVoteToSheet(pairRow, side, url, ingestSecretStr) {
 
 /** 初赛 PK 审计：只校验 choiceId / label，不写 Round2 行 */
 function assertRound1PairVote(eventId, choiceId, label) {
-  if (eventId !== ALLOWED_EVENT_ID) {
+  if (eventId !== "voiceofnyc-revival") {
     throw new HttpsError("invalid-argument", "不支持的活动。");
   }
   if (!ROUND1_PAIR_CHOICE_IDS.has(choiceId)) {
@@ -314,12 +374,43 @@ exports.publishVoteUi = onCall(
     const eventId = String(data.eventId || "").trim();
     const secret = String(data.secret || "").trim();
     const expected = (staffPublishSecret.value() || "").trim();
-    if (eventId !== ALLOWED_EVENT_ID) {
+    if (eventId !== "voiceofnyc-revival") {
       throw new HttpsError("invalid-argument", "不支持的活动。");
     }
     if (!expected || secret !== expected) {
       throw new HttpsError("permission-denied", "发布密钥无效。");
     }
+
+    if (data.rounds && typeof data.rounds === "object" && !Array.isArray(data.rounds)) {
+      const roundsOut = {};
+      for (const rid of ROUND_IDS_ORDERED) {
+        const sanitized = validateOptionalRoundBlock(rid, data.rounds[rid]);
+        if (
+          sanitized.candidates.length > 0 ||
+          sanitized.pageTitle ||
+          sanitized.subtitle
+        ) {
+          roundsOut[rid] = sanitized;
+        }
+      }
+      const mirror = legacyMirrorFromRounds(roundsOut);
+      await admin
+        .firestore()
+        .collection("events")
+        .doc(eventId)
+        .collection("site")
+        .doc("voteUi")
+        .set({
+          voteUiVersion: 2,
+          rounds: roundsOut,
+          candidates: mirror.candidates,
+          pageTitle: mirror.pageTitle,
+          subtitle: mirror.subtitle,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      return { ok: true };
+    }
+
     const candidates = validateCandidatesForPublish(data.candidates);
     const pageTitle =
       data.pageTitle != null ? String(data.pageTitle).trim().slice(0, 120) : "";

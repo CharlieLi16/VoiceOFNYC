@@ -12,4 +12,4 @@ export const DEFAULT_ROUND1_AUDIENCE_RANGE = `${ROUND1_AUDIENCE_SHEET_NAME}!${RO
 export const DEFAULT_ROUND2_AUDIENCE_RANGE = "Round2Audience!A2:B7";
 /** `/stage/final-reveal` 用；默认与复活投票（`round2AudienceRange`）同表；要单独 Tab 时改成例如 FinalAudience!A2:B7 */
 export const DEFAULT_FINAL_AUDIENCE_RANGE = DEFAULT_ROUND2_AUDIENCE_RANGE;
-export const DEFAULT_AUDIENCE_POLL_MS = 15_000;
+export const DEFAULT_AUDIENCE_POLL_MS = 5_000;

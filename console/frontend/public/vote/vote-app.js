@@ -67,6 +67,24 @@ function resolveVoteRoundId() {
   return raw ? normalizeVoteRoundId(raw) : "";
 }
 
+/**
+ * 短信 / 私发链接可带 ?voteCode=XXX（或 ?code=），打开后自动填入投票码，减少手输。
+ * 勿把含个人投票码的链接投屏或发群公告（等同把票交给别人）。
+ */
+function resolvePrefillVoteCode() {
+  if (cfg?.allowVoteCodeFromUrl === false) return "";
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const raw = q.get("voteCode") ?? q.get("code");
+    if (raw == null) return "";
+    const t = String(raw).trim().replace(/\s+/g, "").toUpperCase();
+    if (t.length < 1 || t.length > 96) return "";
+    return t;
+  } catch {
+    return "";
+  }
+}
+
 /** round1_pk_n → Round1Audience 数据行号 n+1（与 Functions 一致） */
 function pairRowFromRound1PkRoundIdClient(roundId) {
   const m = /^round1_pk_([1-5])$/.exec(normalizeVoteRoundId(roundId));
@@ -97,7 +115,7 @@ function isLocalVoteHost() {
 }
 
 /**
- * 是否合并 Firestore events/.../voteUi（标题、candidates）。
+ * 是否合并 Firestore events/.../voteUi（voteUi.rounds[roundId] 或旧版全局 candidates / 标题）。
  * - 默认：localhost / 127.0.0.1 不合并，仅用 vote-config.js（含 round1PkByRoundId）。
  * - 本地也要测线上已发布 voteUi：vote-config 设 mergeFirestoreVoteUi: true。
  * - 任意环境强制只用本地配置：ignoreFirestoreVoteUi: true。
@@ -168,26 +186,71 @@ async function init() {
     candidates: Array.isArray(cfg.candidates) ? cfg.candidates.map(normalizeCandidate) : [],
   };
 
+  const pkMap = cfg?.round1PkByRoundId;
+  const titleEl = document.getElementById("vp-page-title");
+  const subEl = document.getElementById("vp-page-subtitle");
+
+  /** 仅当 Firestore `voteUi.rounds[当前轮].candidates` 非空时为 true；初赛是否改用 round1PkByRoundId 依此判断 */
+  let voteUiRoundCandidatesPublished = false;
+
   if (shouldMergeFirestoreVoteUi()) {
     try {
       const snap = await getDoc(doc(db, "events", displayCfg.eventId, "site", "voteUi"));
       if (snap.exists()) {
         const d = snap.data();
-        if (Array.isArray(d.candidates) && d.candidates.length) {
+        const hasRoundsSchema =
+          d.rounds && typeof d.rounds === "object" && !Array.isArray(d.rounds);
+        const roundBlock = hasRoundsSchema ? d.rounds[resolvedRoundId] : null;
+
+        if (
+          roundBlock &&
+          Array.isArray(roundBlock.candidates) &&
+          roundBlock.candidates.length > 0
+        ) {
+          displayCfg = {
+            ...displayCfg,
+            candidates: roundBlock.candidates.map(normalizeCandidate),
+          };
+          voteUiRoundCandidatesPublished = true;
+        } else if (!hasRoundsSchema && Array.isArray(d.candidates) && d.candidates.length) {
+          displayCfg = {
+            ...displayCfg,
+            candidates: d.candidates.map(normalizeCandidate),
+          };
+        } else if (
+          hasRoundsSchema &&
+          !isRound1PkRound(resolvedRoundId) &&
+          Array.isArray(d.candidates) &&
+          d.candidates.length
+        ) {
+          /** 新 schema 下某环节未填选手时，用顶层 candidates（发布时由复活赛等环节镜像） */
           displayCfg = {
             ...displayCfg,
             candidates: d.candidates.map(normalizeCandidate),
           };
         }
-        const titleEl = document.getElementById("vp-page-title");
-        const subEl = document.getElementById("vp-page-subtitle");
-        if (typeof d.pageTitle === "string" && d.pageTitle.trim() && titleEl) {
-          titleEl.textContent = d.pageTitle.trim();
+
+        const tRound =
+          roundBlock && typeof roundBlock.pageTitle === "string"
+            ? roundBlock.pageTitle.trim()
+            : "";
+        const tGlobal =
+          typeof d.pageTitle === "string" ? d.pageTitle.trim() : "";
+        const titleText = tRound || tGlobal;
+        if (titleText && titleEl) {
+          titleEl.textContent = titleText;
         }
-        if (typeof d.subtitle === "string" && d.subtitle.trim() && subEl) {
+
+        const sRound =
+          roundBlock && typeof roundBlock.subtitle === "string"
+            ? roundBlock.subtitle.trim()
+            : "";
+        const sGlobal = typeof d.subtitle === "string" ? d.subtitle.trim() : "";
+        const subText = sRound || (!hasRoundsSchema ? sGlobal : "");
+        if (subText && subEl) {
           subEl.style.whiteSpace = "pre-line";
           subEl.innerHTML = "";
-          subEl.textContent = d.subtitle.trim();
+          subEl.textContent = subText;
         }
       }
     } catch (e) {
@@ -199,9 +262,12 @@ async function init() {
     );
   }
 
-  /** 初赛五组：vote-config 里 round1PkByRoundId 优先于 Firestore 的 candidates（便于本地固定 1v2、3v4…） */
-  const pkMap = cfg?.round1PkByRoundId;
-  if (isRound1PkRound(resolvedRoundId) && pkMap && typeof pkMap === "object") {
+  if (
+    isRound1PkRound(resolvedRoundId) &&
+    pkMap &&
+    typeof pkMap === "object" &&
+    !voteUiRoundCandidatesPublished
+  ) {
     const pair = pkMap[resolvedRoundId];
     if (Array.isArray(pair) && pair.length === 2) {
       displayCfg = { ...displayCfg, candidates: pair.map(normalizeCandidate) };
@@ -221,10 +287,10 @@ async function init() {
     return;
   }
 
-  /** Firestore 里常为复活赛副标题；初赛链接下必须改文案，否则会误导观众 */
-  if (round1Pk) {
-    const subEl = document.getElementById("vp-page-subtitle");
-    if (subEl) {
+  /** 初赛默认副标题：仅当当前未从 voteUi（按环节或旧版全局）写入副标题时 */
+  if (round1Pk && subEl) {
+    const hasSub = Boolean(subEl.textContent && subEl.textContent.trim());
+    if (!hasSub) {
       subEl.style.whiteSpace = "pre-line";
       subEl.innerHTML = "";
       subEl.textContent =
@@ -276,6 +342,11 @@ async function init() {
   }
 
   codeInput?.addEventListener("input", syncSubmitEnabled, { passive: true });
+
+  const prefillCode = resolvePrefillVoteCode();
+  if (prefillCode && codeInput) {
+    codeInput.value = prefillCode;
+  }
 
   if (round1Pk) {
     document.getElementById("vp-root")?.classList.add("vp-root--pk");

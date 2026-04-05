@@ -4,8 +4,8 @@
 
 | 文件 | 受众 | 说明 |
 |------|------|------|
-| **`vote.html`** | 观众 | 实际投票页；支持 `?roundId=`；启动时读取 Firestore **`events/{eventId}/site/voteUi`** 覆盖选手与标题（无文档则用 [`vote-config.js`](../frontend/public/vote/vote-config.js)）。 |
-| **`index.html`** | 工作人员 | **调度后台**：12 个环节的链接（复制 / 打开）、编辑选手与标题并 **发布** 到 Firestore（Callable **`publishVoteUi`**）。若 URL **已带 `roundId`**，会 **自动跳转到 `vote.html`**，因此旧链接 `…/vote/?roundId=…` 仍给观众用。 |
+| **`vote.html`** | 观众 | 实际投票页；支持 `?roundId=`；按当前轮读取 **`voteUi.rounds.{roundId}`**（或旧版顶层字段），与 [`vote-config.js`](../frontend/public/vote/vote-config.js) 互补兜底。 |
+| **`index.html`** | 工作人员 | **调度后台**：12 个环节的链接（复制 / 打开）、**按环节**编辑选手与标题并 **发布** 到 Firestore（Callable **`publishVoteUi`**，`voteUi.rounds.{roundId}`）。若 URL **已带 `roundId`**，会 **自动跳转到 `vote.html`**，因此旧链接 `…/vote/?roundId=…` 仍给观众用。 |
 
 构建后路径在 **`dist/vote/`** 下同名文件。
 
@@ -13,11 +13,11 @@
 
 ## 远程选手与标题（`voteUi`）
 
-- Firestore 文档：`events/voiceofnyc/site/voteUi`  
-  - 若曾使用旧 ID `voiceofnyc-revival`，需在控制台将 `voteUi` / `tickets` / `votes` 迁到 `events/voiceofnyc/` 下，或在新路径下重新发布与 seed 票码。  
-  字段：`candidates`（`{ id, sheetRow, label, img }[]`）、可选 `pageTitle` / `subtitle`、`updatedAt`。  
+- Firestore 文档：`events/voiceofnyc-revival/site/voteUi`  
+  - **推荐（v2）**：`voteUiVersion: 2`，`rounds`：`{ [roundId]: { candidates, pageTitle?, subtitle? } }`，与 `vote-config.js` 中「每轮一份」的语义一致；另保留顶层 `candidates` / `pageTitle` / `subtitle` 作为复活等环节的**镜像**，供旧逻辑或未填某轮时的兜底。  
+  - **旧版**：仅顶层 `candidates`、`pageTitle`、`subtitle`（全场共用一份选手列表）。  
 - **规则**：[`firebase-vote/firestore.rules`](../firebase-vote/firestore.rules) 允许该文档 **公开读**、**禁止客户端写**；写入仅通过 Cloud Function。  
-- **发布**：在 **`index.html`** 填 **`STAFF_PUBLISH_SECRET`**（与 Functions Secret 一致）后点「发布」。首次部署后需：
+- **发布**：在 **`index.html`** 按环节折叠编辑，填 **`STAFF_PUBLISH_SECRET`** 后点「发布全部环节」。仍支持 Callable 仅传顶层 `candidates` 的**旧版发布**（不写 `rounds`）。首次部署后需：
 
 ```bash
 cd console/firebase-vote
@@ -36,6 +36,14 @@ npx firebase-tools@latest deploy --only functions,firestore:rules
 **合法 `roundId`（共 12 个）**：`round1_pk_1`～`5`、`round2_revival`、`final_perf_1`～`6`。
 
 **无需**为每轮重新印票码（同一批码可跨轮使用，每轮各 1 次）。
+
+### 把投票码顺利交给观众
+
+- **码的形态**：`seed-tickets.mjs` 默认生成 **12 位**（如 `XXXX-XXXX-XXXX`），已用分隔符方便朗读与核对。
+- **现场常见做法**：入场发**小卡/贴纸**印码；签到处**打印带码的名单**；志愿者用手机**短信/微信私发**一人一链（勿把「带个人码的链接」投屏或发大群）。
+- **减少手输**：`vote.html` 支持在链接上带 **`?voteCode=码`**（或 `?code=`），打开后自动填入投票码，可与 `roundId` 同用，例如  
+  `…/vote.html?roundId=round2_revival&voteCode=SXY3-YVFR-C3AE`（码中的空格会被去掉并转大写）。不需要时在 `vote-config.js` 设 `allowVoteCodeFromUrl: false`。
+- **完全不想发码**（仅限可信封闭场）：Secret `VOTE_CODES=DISABLED` 且 `vote-config` 里 `requireVoteCode: false`（见下文），否则服务端会拒票。
 
 ## 其它 `VOTE_CODES` 模式
 
@@ -64,5 +72,5 @@ localStorage 按 **`eventId` + 实际 roundId** 区分环节。
 ### 初赛 PK（`round1_pk_1`～`round1_pk_5`）
 
 - 投票页为 **左右 1v1**：须 **恰好 2 人**——**第 1 位 = 左侧**（表 **B** 列观众票），**第 2 位 = 右侧**（**C** 列）。
-- 可在 **`vote-config.js`** 里配置 **`round1PkByRoundId`**（五组各两人）；`vote.html` 在初赛 `roundId` 下会 **优先用该映射**，覆盖 Firestore `voteUi.candidates`，便于固定 **1v2、3v4、…、9v10** 而无需每场改发布内容。
+- **`vote-config.js`** 的 **`round1PkByRoundId`**：当 Firestore **未**发布该轮的 `voteUi.rounds.{roundId}.candidates` 时，观众页使用该映射；若调度台已为该初赛轮发布选手，则以 **Firestore 该轮为准**。
 - Cloud Function 对 Apps Script 发 **`addPairVote`**（`pairRow` = 表第 2～6 行对应五组 PK），不再使用 `addFinalVote`。

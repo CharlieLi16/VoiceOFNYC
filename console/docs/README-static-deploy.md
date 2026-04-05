@@ -105,4 +105,5 @@ server {
 | Vercel 整站 `NOT_FOUND` / `Code: NOT_FOUND` | Root Directory 未设为 **`console/frontend`**，或输出目录配置成了错误的嵌套路径 |
 | 刷新 `/admin` 404 | 静态服务器未做 **SPA fallback** 到 `index.html` |
 | API `Failed to fetch` | 未设 `VITE_API_BASE`、CORS、或 https 页面请求了 http |
+| 控制台报 `Unexpected token '<'` / `DOCTYPE is not valid JSON` | 请求 `/api/...` 却拿到 **index.html**（SPA 兜底）。构建时设置 **`VITE_API_BASE`** 指向真实后端，或在 Nginx/托管平台把 **`/api` 反代**到 FastAPI，勿让 API 路径落到前端 |
 | Google 表读不到 | 未在 build 前配置 `VITE_GOOGLE_*`，或表未对「知道链接的人」只读共享 |

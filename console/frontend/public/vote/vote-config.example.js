@@ -2,8 +2,7 @@
  * 复制为 vote-config.js 后填写；勿把含真实密钥的文件提交到公开仓库（若介意 apiKey 可见性）。
  */
 window.__VOTE_PAGE_CONFIG = {
-  /** 须与 Cloud Function ALLOWED_EVENT_ID、firestore.rules 一致 */
-  eventId: "voiceofnyc",
+  eventId: "your-event-id",
   /** 默认轮次；可被 URL ?roundId= 覆盖（与 functions/index.js ALLOWED_ROUND_IDS 一致） */
   voteRoundId: "round2_revival",
   firebase: {
@@ -13,7 +12,7 @@ window.__VOTE_PAGE_CONFIG = {
     appId: "REPLACE_ME",
   },
   /**
-   * 可选：初赛五组固定 1v2、3v4…（round1_pk_* 时 vote.html 优先于此，覆盖 Firestore candidates）。
+   * 可选：初赛五组固定 1v2、3v4…（仅当未发布 voteUi.rounds.{roundId}.candidates 时生效）。
    * 同组两人 sheetRow 相同 = Round1Audience 该对数据行（2～6）；写表仍由 roundId + pairSide。
    */
   round1PkByRoundId: {
@@ -25,12 +24,15 @@ window.__VOTE_PAGE_CONFIG = {
   /**
    * 多人轮次（复活/决赛）：1～6 人，sheetRow 2～7。
    * 初赛若未配 round1PkByRoundId 某组，可在此写恰好 2 人作兜底。
+   * 工作人员可在 vote/index.html 按环节发布到 Firestore voteUi.rounds（字段与此相同）；某轮未发布选手时观众端回退到本文件。
    */
   candidates: [
     { id: "s1", sheetRow: 2, label: "选手 1", img: "/img/contestants/1.jpg" },
   ],
   oneVotePerBrowser: true,
   requireVoteCode: true,
+  /** 设为 false 则忽略 URL 里的 voteCode/code（默认会从 ?voteCode= 预填，方便短信私发） */
+  // allowVoteCodeFromUrl: false,
   lockBrowserAfterSubmit: false,
   functionsRegion: "us-east4",
   /** 任意环境强制不读 Firestore voteUi（仅用本文件） */
