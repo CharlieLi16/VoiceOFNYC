@@ -11,21 +11,7 @@ export async function fetchSheetRange(
   const enc = encodeURIComponent(range);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${enc}?key=${encodeURIComponent(apiKey)}`;
   const res = await fetch(url);
-  const text = await res.text();
-  const start = text.trimStart();
-  if (start.startsWith("<")) {
-    return {
-      error: {
-        message:
-          "Sheets 请求返回了 HTML 而非 JSON（常见于代理/网络拦截）。请检查 API Key、表格 ID 与网络。",
-      },
-    };
-  }
-  try {
-    return JSON.parse(text) as SheetValuesResponse;
-  } catch {
-    return { error: { message: "无法解析 Google Sheets 响应" } };
-  }
+  return res.json() as Promise<SheetValuesResponse>;
 }
 
 export function parseIntCell(v: unknown): number {

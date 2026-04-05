@@ -11,7 +11,6 @@ import {
   saveRound1StagePairs,
   saveRound2Lineup,
 } from "@/api/client";
-import { parseResponseAsJson } from "@/api/safeResponseJson";
 import type { Contestant, Round1PairMeta, Round2LineupSlot, StatePayload } from "@/api/types";
 import {
   getStageContestantPreset,
@@ -303,7 +302,7 @@ export default function Admin() {
           `无法加载 /data/seed-contestants.json（HTTP ${r.status}）。请用 npm run dev 打开页面，或把 dist 根目录作为静态站根目录。`
         );
       }
-      const data = await parseResponseAsJson<unknown>(r);
+      const data = (await r.json()) as unknown;
       if (!Array.isArray(data)) throw new Error("种子 JSON 须为数组");
       const res = await importContestants(data as Record<string, unknown>[]);
       setState({ contestants: res.contestants, ranked: res.ranked });
