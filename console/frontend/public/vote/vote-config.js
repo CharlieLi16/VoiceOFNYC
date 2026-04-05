@@ -19,8 +19,9 @@ window.__VOTE_PAGE_CONFIG = {
     appId: "1:797810284806:web:3616adb3b1949919bb2687",
   },
   /**
-   * sheetRow：与 Round2Audience 数据行一致（第 1 行表头，选手 1 常为第 2 行 → 2）
-   * img：相对当前站点根路径，部署时与 console 的 public/img 一致即可
+   * 多人投票（复活/决赛等）：sheetRow 与 Round2Audience 等一致。
+   * 初赛 round1_pk_*：须 **恰好 2 人**，顺序为 [左, 右]，对应 Round1Audience 该组 B/C 列。
+   * img：相对站点根路径（如 /img/contestants/1.jpg）
    */
   candidates: [
     { id: "s1", sheetRow: 2, label: "选手 1", img: "/img/contestants/1.jpg" },

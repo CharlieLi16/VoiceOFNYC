@@ -57,3 +57,8 @@ localStorage 按 **`eventId` + 实际 roundId** 区分环节。
 ## 选手与行号
 
 Callable / `publishVoteUi` 允许 **`s1`～`s6`**、**`sheetRow` 2～7**。大屏 lineup 仍在主站 **`/admin`**。
+
+### 初赛 PK（`round1_pk_1`～`round1_pk_5`）
+
+- 投票页为 **左右 1v1**：`candidates` **必须恰好 2 人**——数组 **第 1 位 = 左侧**（表 **B** 列观众票），**第 2 位 = 右侧**（**C** 列）。
+- Cloud Function 对 Apps Script 发 **`addPairVote`**（`pairRow` = 第 2～6 行对应五组 PK），不再使用 `addFinalVote`。

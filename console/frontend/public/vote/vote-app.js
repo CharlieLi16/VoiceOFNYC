@@ -63,6 +63,11 @@ function storageKeyFor(roundId) {
   return `vp_voted_${cfg?.eventId ?? "default"}_${rid}`;
 }
 
+/** 初赛 1v1：round1_pk_1～5 对应表 Round1Audience 第 2～6 行 */
+function isRound1PkRound(roundId) {
+  return /^round1_pk_[1-5]$/.test(String(roundId || "").trim());
+}
+
 /** 将 FirebaseError / Functions 错误转成用户可读文案 */
 function humanizeVoteError(err) {
   const code = err?.code || "";
@@ -153,6 +158,13 @@ async function init() {
     return;
   }
 
+  const round1Pk = isRound1PkRound(resolvedRoundId);
+  if (round1Pk && displayCfg.candidates.length !== 2) {
+    showBanner("初赛 PK 须恰好 2 人：第 1 位为左侧、第 2 位为右侧（vote-config 或后台发布）。");
+    submitBtn.disabled = true;
+    return;
+  }
+
   const brand = document.querySelector(".vp-brand");
   if (brand) {
     const meta = document.createElement("p");
@@ -198,41 +210,93 @@ async function init() {
 
   codeInput?.addEventListener("input", syncSubmitEnabled, { passive: true });
 
-  for (const c of displayCfg.candidates) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "vp-card";
-    btn.dataset.id = c.id;
-    btn.dataset.row = String(c.sheetRow);
-    const img = document.createElement("img");
-    img.className = "vp-card__img";
-    img.src = c.img || "";
-    img.alt = "";
-    img.loading = "lazy";
-    img.decoding = "async";
-    img.onerror = () => {
-      img.replaceWith(Object.assign(document.createElement("div"), { className: "vp-card__img" }));
-    };
-    const mid = document.createElement("div");
-    const name = document.createElement("span");
-    name.className = "vp-card__name";
-    name.textContent = c.label;
-    const hint = document.createElement("span");
-    hint.className = "vp-card__hint";
-    hint.textContent = "点选后按下方确认投票";
-    mid.append(name, hint);
-    btn.append(img, mid);
-    btn.addEventListener(
-      "click",
-      () => {
-        selected = c;
-        document.querySelectorAll(".vp-card").forEach((el) => el.classList.remove("vp-card--selected"));
-        btn.classList.add("vp-card--selected");
-        syncSubmitEnabled();
-      },
-      { passive: true }
-    );
-    frag.appendChild(btn);
+  if (round1Pk) {
+    document.getElementById("vp-root")?.classList.add("vp-root--pk");
+    gridEl.classList.add("vp-grid--pk1v1");
+    const pairWrap = document.createElement("div");
+    pairWrap.className = "vp-pk-pair";
+    const [leftC, rightC] = displayCfg.candidates;
+
+    function makePkCard(c, side) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "vp-card vp-card--pk";
+      btn.dataset.id = c.id;
+      btn.dataset.pairSide = side;
+      const img = document.createElement("img");
+      img.className = "vp-card__img vp-card__img--pk";
+      img.src = c.img || "";
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.onerror = () => {
+        img.replaceWith(Object.assign(document.createElement("div"), { className: "vp-card__img vp-card__img--pk" }));
+      };
+      const mid = document.createElement("div");
+      const name = document.createElement("span");
+      name.className = "vp-card__name";
+      name.textContent = c.label || (side === "left" ? "左侧" : "右侧");
+      const hint = document.createElement("span");
+      hint.className = "vp-card__hint";
+      hint.textContent = side === "left" ? "点选左侧支持 TA" : "点选右侧支持 TA";
+      mid.append(name, hint);
+      btn.append(img, mid);
+      btn.addEventListener(
+        "click",
+        () => {
+          selected = { ...c, pairSide: side };
+          pairWrap.querySelectorAll(".vp-card--pk").forEach((el) => el.classList.remove("vp-card--selected"));
+          btn.classList.add("vp-card--selected");
+          syncSubmitEnabled();
+        },
+        { passive: true }
+      );
+      return btn;
+    }
+
+    const vs = document.createElement("div");
+    vs.className = "vp-pk-vs";
+    vs.setAttribute("aria-hidden", "true");
+    vs.textContent = "VS";
+    pairWrap.append(makePkCard(leftC, "left"), vs, makePkCard(rightC, "right"));
+    frag.appendChild(pairWrap);
+  } else {
+    for (const c of displayCfg.candidates) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "vp-card";
+      btn.dataset.id = c.id;
+      btn.dataset.row = String(c.sheetRow);
+      const img = document.createElement("img");
+      img.className = "vp-card__img";
+      img.src = c.img || "";
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.onerror = () => {
+        img.replaceWith(Object.assign(document.createElement("div"), { className: "vp-card__img" }));
+      };
+      const mid = document.createElement("div");
+      const name = document.createElement("span");
+      name.className = "vp-card__name";
+      name.textContent = c.label;
+      const hint = document.createElement("span");
+      hint.className = "vp-card__hint";
+      hint.textContent = "点选后按下方确认投票";
+      mid.append(name, hint);
+      btn.append(img, mid);
+      btn.addEventListener(
+        "click",
+        () => {
+          selected = c;
+          document.querySelectorAll(".vp-card").forEach((el) => el.classList.remove("vp-card--selected"));
+          btn.classList.add("vp-card--selected");
+          syncSubmitEnabled();
+        },
+        { passive: true }
+      );
+      frag.appendChild(btn);
+    }
   }
   gridEl.appendChild(frag);
 
@@ -251,14 +315,19 @@ async function init() {
       submitBtn.disabled = true;
       showBanner("提交中…");
       try {
-        const { data } = await submitVoteFn({
+        const payload = {
           eventId: displayCfg.eventId,
           choiceId: selected.id,
-          sheetRow: selected.sheetRow,
           label: selected.label,
           voteCode,
           roundId: resolvedRoundId,
-        });
+        };
+        if (selected.pairSide === "left" || selected.pairSide === "right") {
+          payload.pairSide = selected.pairSide;
+        } else {
+          payload.sheetRow = selected.sheetRow;
+        }
+        const { data } = await submitVoteFn(payload);
         if (shouldLockBrowser()) localStorage.setItem(storageKeyFor(resolvedRoundId), "1");
         if (data?.sheetUncertain) {
           showBanner("已计入。若大屏未更新请稍候刷新或联系工作人员。", true);

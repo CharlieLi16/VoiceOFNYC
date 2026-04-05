@@ -45,6 +45,15 @@ function assertAllowedRoundId(roundId) {
   }
 }
 
+/** round1_pk_1 → 表数据行 2 … round1_pk_5 → 行 6；非初赛返回 null */
+function pairRowFromRound1PkRoundId(roundId) {
+  const m = /^round1_pk_([1-5])$/.exec(String(roundId || "").trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  if (!Number.isInteger(n) || n < 1 || n > 5) return null;
+  return n + 1;
+}
+
 const ALLOWED_CHOICE_IDS = new Set(["s1", "s2", "s3", "s4", "s5", "s6"]);
 const ALLOWED_SHEET_ROWS = new Set([2, 3, 4, 5, 6, 7]);
 
@@ -202,6 +211,60 @@ async function postAddFinalVoteToSheet(row, url, ingestSecretStr) {
   return { ok: true, ambiguous: true };
 }
 
+/**
+ * Round1Audience：观众左 B 列 / 右 C 列累加（见 vote-ingest.gs addPairVote）
+ * @returns {Promise<{ ok: true, ambiguous?: boolean } | { error: string }>}
+ */
+async function postAddPairVoteToSheet(pairRow, side, url, ingestSecretStr) {
+  const payload = {
+    action: "addPairVote",
+    pairRow,
+    side: side === "right" ? "right" : "left",
+    part: "audience",
+    delta: 1,
+  };
+  if (ingestSecretStr) payload.secret = ingestSecretStr;
+
+  const res = await fetch(url, {
+    method: "POST",
+    redirect: "follow",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  const trimmed = text.trim();
+  let parsed = null;
+  if (trimmed.startsWith("{")) {
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  if (parsed && parsed.ok === false) {
+    return { error: String(parsed.error || "写入表格被拒绝") };
+  }
+  if (parsed && parsed.ok === true) {
+    return { ok: true };
+  }
+  return { ok: true, ambiguous: true };
+}
+
+/** 初赛 PK 审计：只校验 choiceId / label，不写 Round2 行 */
+function assertRound1PairVote(eventId, choiceId, label) {
+  if (eventId !== "voiceofnyc-revival") {
+    throw new HttpsError("invalid-argument", "不支持的活动。");
+  }
+  if (!ALLOWED_CHOICE_IDS.has(choiceId)) {
+    throw new HttpsError("invalid-argument", "选手数据无效。");
+  }
+  if (!label || label.length > 120) {
+    throw new HttpsError("invalid-argument", "显示名无效。");
+  }
+}
+
 /** 工作人员发布投票页 UI 到 Firestore events/{eventId}/site/voteUi */
 exports.publishVoteUi = onCall(
   {
@@ -256,21 +319,31 @@ exports.submitVote = onCall(
     const sheetRow = Number(data.sheetRow);
     const label = String(data.label || "").trim();
     const voteCodeRaw = data.voteCode != null ? String(data.voteCode) : "";
+    const roundId = String(data.roundId || "").trim();
+    const pairRow = pairRowFromRound1PkRoundId(roundId);
+    const pairSideRaw = String(data.pairSide || "").trim().toLowerCase();
+    const isRound1Pair = pairRow != null;
 
     if (!eventId || !choiceId || !label) {
       throw new HttpsError("invalid-argument", "缺少必填字段。");
     }
-    if (!Number.isInteger(sheetRow) || sheetRow < 2) {
-      throw new HttpsError("invalid-argument", "选手行号无效。");
-    }
 
-    assertAllowedVote(eventId, choiceId, sheetRow);
+    if (isRound1Pair) {
+      assertRound1PairVote(eventId, choiceId, label);
+      if (pairSideRaw !== "left" && pairSideRaw !== "right") {
+        throw new HttpsError("invalid-argument", "初赛须指定 pairSide 为 left 或 right。");
+      }
+    } else {
+      if (!Number.isInteger(sheetRow) || sheetRow < 2) {
+        throw new HttpsError("invalid-argument", "选手行号无效。");
+      }
+      assertAllowedVote(eventId, choiceId, sheetRow);
+    }
 
     const voteId = `call-${crypto.randomUUID()}`;
     const voteCode = voteCodeRaw.trim().toUpperCase();
     const inline = parseInlineCodes(voteCodesSecret.value());
     const needsTicketRound = inline && inline.size === 0;
-    const roundId = String(data.roundId || "").trim();
     if (needsTicketRound) {
       assertAllowedRoundId(roundId);
     }
@@ -292,26 +365,35 @@ exports.submitVote = onCall(
     }
 
     const sec = (voteIngestSecret.value() || "").trim();
-    const sheetResult = await postAddFinalVoteToSheet(sheetRow, url, sec);
+    let sheetResult;
+    if (isRound1Pair) {
+      sheetResult = await postAddPairVoteToSheet(pairRow, pairSideRaw, url, sec);
+    } else {
+      sheetResult = await postAddFinalVoteToSheet(sheetRow, url, sec);
+    }
     if (sheetResult.error) {
       throw new HttpsError("failed-precondition", `表格写入失败：${sheetResult.error}`);
     }
 
-    await admin
-      .firestore()
-      .collection("events")
-      .doc(eventId)
-      .collection("votes")
-      .add({
-        choiceId,
-        sheetRow,
-        label,
-        voteCode,
-        roundId: roundId || "",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        source: "vote-callable",
-        clientSheetUncertain: sheetResult.ambiguous === true,
-      });
+    const votePayload = {
+      choiceId,
+      label,
+      voteCode,
+      roundId: roundId || "",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      source: "vote-callable",
+      clientSheetUncertain: sheetResult.ambiguous === true,
+    };
+    if (isRound1Pair) {
+      votePayload.voteKind = "round1_pair";
+      votePayload.pairRow = pairRow;
+      votePayload.pairSide = pairSideRaw;
+      votePayload.sheetRow = pairRow;
+    } else {
+      votePayload.sheetRow = sheetRow;
+    }
+
+    await admin.firestore().collection("events").doc(eventId).collection("votes").add(votePayload);
 
     return {
       ok: true,

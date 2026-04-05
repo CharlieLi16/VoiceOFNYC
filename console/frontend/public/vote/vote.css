@@ -36,6 +36,10 @@ body {
   padding: 1.25rem 1rem 6.5rem;
 }
 
+#vp-root.vp-root--pk {
+  max-width: min(42rem, 100%);
+}
+
 .vp-brand {
   text-align: center;
   margin-bottom: 1.25rem;
@@ -127,6 +131,65 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.vp-grid.vp-grid--pk1v1 {
+  flex-direction: column;
+}
+
+.vp-pk-pair {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.vp-pk-vs {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Bungee, cursive;
+  font-size: clamp(1rem, 4vw, 1.35rem);
+  color: var(--vp-gold-dim);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 0.08em;
+  padding: 0 0.15rem;
+  user-select: none;
+}
+
+.vp-card.vp-card--pk {
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.75rem 0.5rem;
+  gap: 0.5rem;
+}
+
+.vp-card--pk > div:last-child {
+  align-items: center;
+}
+
+.vp-card__img--pk {
+  width: 100% !important;
+  max-width: 11rem;
+  aspect-ratio: 3 / 4;
+  min-height: 10rem;
+  object-fit: cover;
+}
+
+@media (max-width: 360px) {
+  .vp-pk-vs {
+    font-size: 0.85rem;
+    padding: 0 0.05rem;
+  }
+  .vp-card__img--pk {
+    min-height: 8rem;
+  }
 }
 
 .vp-card {
@@ -226,6 +289,10 @@ body {
   max-width: 28rem;
   margin: 0 auto;
   pointer-events: auto;
+}
+
+#vp-root.vp-root--pk ~ .vp-dock .vp-dock-inner {
+  max-width: min(42rem, 100%);
 }
 
 .vp-submit {
