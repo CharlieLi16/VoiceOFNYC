@@ -45,6 +45,9 @@ function assertAllowedRoundId(roundId) {
   }
 }
 
+/** Firestore `events/{eventId}/…` 分区；与轮次 `round2_revival` 无关 */
+const ALLOWED_EVENT_ID = "voiceofnyc";
+
 /** 去掉零宽字符等，避免 URL/复制带进 invisible 字符导致 round1 识别失败 */
 function normalizeClientRoundId(raw) {
   return String(raw ?? "")
@@ -83,7 +86,7 @@ const PUBLISH_SHEET_ROWS = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
 /** 与 firestore.rules / vote-config 一致时可收紧；含决赛第 6 人（s6 / 第 7 行） */
 function assertAllowedVote(eventId, choiceId, sheetRow) {
-  if (eventId !== "voiceofnyc-revival") {
+  if (eventId !== ALLOWED_EVENT_ID) {
     throw new HttpsError("invalid-argument", "不支持的活动。");
   }
   if (!ALLOWED_CHOICE_IDS.has(choiceId) || !ALLOWED_SHEET_ROWS.has(sheetRow)) {
@@ -288,7 +291,7 @@ async function postAddPairVoteToSheet(pairRow, side, url, ingestSecretStr) {
 
 /** 初赛 PK 审计：只校验 choiceId / label，不写 Round2 行 */
 function assertRound1PairVote(eventId, choiceId, label) {
-  if (eventId !== "voiceofnyc-revival") {
+  if (eventId !== ALLOWED_EVENT_ID) {
     throw new HttpsError("invalid-argument", "不支持的活动。");
   }
   if (!ROUND1_PAIR_CHOICE_IDS.has(choiceId)) {
@@ -311,7 +314,7 @@ exports.publishVoteUi = onCall(
     const eventId = String(data.eventId || "").trim();
     const secret = String(data.secret || "").trim();
     const expected = (staffPublishSecret.value() || "").trim();
-    if (eventId !== "voiceofnyc-revival") {
+    if (eventId !== ALLOWED_EVENT_ID) {
       throw new HttpsError("invalid-argument", "不支持的活动。");
     }
     if (!expected || secret !== expected) {

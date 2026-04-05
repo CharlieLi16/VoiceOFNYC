@@ -13,7 +13,8 @@
 
 ## 远程选手与标题（`voteUi`）
 
-- Firestore 文档：`events/voiceofnyc-revival/site/voteUi`  
+- Firestore 文档：`events/voiceofnyc/site/voteUi`  
+  - 若曾使用旧 ID `voiceofnyc-revival`，需在控制台将 `voteUi` / `tickets` / `votes` 迁到 `events/voiceofnyc/` 下，或在新路径下重新发布与 seed 票码。  
   字段：`candidates`（`{ id, sheetRow, label, img }[]`）、可选 `pageTitle` / `subtitle`、`updatedAt`。  
 - **规则**：[`firebase-vote/firestore.rules`](../firebase-vote/firestore.rules) 允许该文档 **公开读**、**禁止客户端写**；写入仅通过 Cloud Function。  
 - **发布**：在 **`index.html`** 填 **`STAFF_PUBLISH_SECRET`**（与 Functions Secret 一致）后点「发布」。首次部署后需：

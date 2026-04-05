@@ -5,7 +5,7 @@
  * 用法：
  *   cd console/firebase-vote/scripts && npm install
  *   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccount.json
- *   node seed-tickets.mjs --event voiceofnyc-revival -n 300
+ *   node seed-tickets.mjs --event voiceofnyc -n 300
  *
  * 默认 CSV 路径：../data/vote-codes.csv（与仓库内 console/firebase-vote/data/ 一致）
  *

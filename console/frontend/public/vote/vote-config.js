@@ -3,8 +3,8 @@
  * 复制自 vote-config.example.js 后按项目修改即可。
  */
 window.__VOTE_PAGE_CONFIG = {
-  /** Firestore 里用于分区投票；Cloud Function 可按 eventId 过滤 */
-  eventId: "voiceofnyc-revival",
+  /** Firestore `events/{eventId}/…` 整场活动 ID（与轮次 round2_revival 无关） */
+  eventId: "voiceofnyc",
   /**
    * 默认投票轮次（与 Cloud Function ALLOWED_ROUND_IDS 一致）。
    * 若 URL 带 ?roundId=xxx 则优先用链接（现场 PPT 可只换链接、不重新部署）。

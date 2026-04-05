@@ -41,7 +41,7 @@ service cloud.firestore {
       allow read: if false;
 
       allow create: if
-        eventId == 'voiceofnyc-revival'
+        eventId == 'voiceofnyc'
         && isVoteShape()
         && request.resource.data.choiceId in [
           's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10'
@@ -62,7 +62,7 @@ service cloud.firestore {
      * 观众投票页远程 UI（candidates / 标题）；仅 Cloud Function publishVoteUi 写入。
      */
     match /events/{eventId}/site/{docId} {
-      allow read: if eventId == 'voiceofnyc-revival' && docId == 'voteUi';
+      allow read: if eventId == 'voiceofnyc' && docId == 'voteUi';
       allow write: if false;
     }
   }
