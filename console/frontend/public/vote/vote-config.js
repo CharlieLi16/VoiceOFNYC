@@ -67,4 +67,6 @@ window.__VOTE_PAGE_CONFIG = {
   lockBrowserAfterSubmit: false,
   /** 与 Cloud Functions 中 submitVote 部署区域一致 */
   functionsRegion: "us-east4",
+  /** 本机 http://localhost:5173 默认已跳过 voteUi；用手机扫局域网 IP 打开时若被线上 voteUi 搞乱，可取消下行注释 */
+  // ignoreFirestoreVoteUi: true,
 };

@@ -32,4 +32,8 @@ window.__VOTE_PAGE_CONFIG = {
   requireVoteCode: true,
   lockBrowserAfterSubmit: false,
   functionsRegion: "us-east4",
+  /** 任意环境强制不读 Firestore voteUi（仅用本文件） */
+  // ignoreFirestoreVoteUi: true,
+  /** 在 localhost 上仍要合并线上 voteUi 时设为 true（默认本机不合并） */
+  // mergeFirestoreVoteUi: true,
 };

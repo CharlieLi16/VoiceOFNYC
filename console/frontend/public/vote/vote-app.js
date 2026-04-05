@@ -68,6 +68,29 @@ function isRound1PkRound(roundId) {
   return /^round1_pk_[1-5]$/.test(String(roundId || "").trim().toLowerCase());
 }
 
+/** 本机 Vite 开发：避免线上 Firestore voteUi（复活 6 人、旧 sheetRow）覆盖本地 vote-config，导致初赛 UI/行号错乱 */
+function isLocalVoteHost() {
+  try {
+    const h = String(window.location.hostname || "").toLowerCase();
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 是否合并 Firestore events/.../voteUi（标题、candidates）。
+ * - 默认：localhost / 127.0.0.1 不合并，仅用 vote-config.js（含 round1PkByRoundId）。
+ * - 本地也要测线上已发布 voteUi：vote-config 设 mergeFirestoreVoteUi: true。
+ * - 任意环境强制只用本地配置：ignoreFirestoreVoteUi: true。
+ */
+function shouldMergeFirestoreVoteUi() {
+  if (cfg?.ignoreFirestoreVoteUi === true) return false;
+  if (cfg?.mergeFirestoreVoteUi === true) return true;
+  if (isLocalVoteHost()) return false;
+  return true;
+}
+
 /** 将 FirebaseError / Functions 错误转成用户可读文案 */
 function humanizeVoteError(err) {
   const code = err?.code || "";
@@ -127,29 +150,35 @@ async function init() {
     candidates: Array.isArray(cfg.candidates) ? cfg.candidates.map(normalizeCandidate) : [],
   };
 
-  try {
-    const snap = await getDoc(doc(db, "events", displayCfg.eventId, "site", "voteUi"));
-    if (snap.exists()) {
-      const d = snap.data();
-      if (Array.isArray(d.candidates) && d.candidates.length) {
-        displayCfg = {
-          ...displayCfg,
-          candidates: d.candidates.map(normalizeCandidate),
-        };
+  if (shouldMergeFirestoreVoteUi()) {
+    try {
+      const snap = await getDoc(doc(db, "events", displayCfg.eventId, "site", "voteUi"));
+      if (snap.exists()) {
+        const d = snap.data();
+        if (Array.isArray(d.candidates) && d.candidates.length) {
+          displayCfg = {
+            ...displayCfg,
+            candidates: d.candidates.map(normalizeCandidate),
+          };
+        }
+        const titleEl = document.getElementById("vp-page-title");
+        const subEl = document.getElementById("vp-page-subtitle");
+        if (typeof d.pageTitle === "string" && d.pageTitle.trim() && titleEl) {
+          titleEl.textContent = d.pageTitle.trim();
+        }
+        if (typeof d.subtitle === "string" && d.subtitle.trim() && subEl) {
+          subEl.style.whiteSpace = "pre-line";
+          subEl.innerHTML = "";
+          subEl.textContent = d.subtitle.trim();
+        }
       }
-      const titleEl = document.getElementById("vp-page-title");
-      const subEl = document.getElementById("vp-page-subtitle");
-      if (typeof d.pageTitle === "string" && d.pageTitle.trim() && titleEl) {
-        titleEl.textContent = d.pageTitle.trim();
-      }
-      if (typeof d.subtitle === "string" && d.subtitle.trim() && subEl) {
-        subEl.style.whiteSpace = "pre-line";
-        subEl.innerHTML = "";
-        subEl.textContent = d.subtitle.trim();
-      }
+    } catch (e) {
+      console.warn("voteUi getDoc", e);
     }
-  } catch (e) {
-    console.warn("voteUi getDoc", e);
+  } else if (isLocalVoteHost()) {
+    console.info(
+      "[vote] 本机开发：已跳过 Firestore voteUi，仅使用 vote-config.js。若需拉线上已发布内容，请设 mergeFirestoreVoteUi: true。"
+    );
   }
 
   /** 初赛五组：vote-config 里 round1PkByRoundId 优先于 Firestore 的 candidates（便于本地固定 1v2、3v4…） */
