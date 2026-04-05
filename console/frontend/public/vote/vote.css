@@ -151,13 +151,12 @@ body {
   align-items: center;
   justify-content: center;
   font-family: Bungee, cursive;
-  font-size: clamp(1rem, 4vw, 1.35rem);
+  font-size: clamp(1.1rem, 4.5vw, 1.5rem);
   color: var(--vp-gold-dim);
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  letter-spacing: 0.08em;
-  padding: 0 0.15rem;
+  letter-spacing: 0.12em;
+  padding: 0 0.35rem;
   user-select: none;
+  align-self: center;
 }
 
 .vp-card.vp-card--pk {
@@ -184,8 +183,9 @@ body {
 
 @media (max-width: 360px) {
   .vp-pk-vs {
-    font-size: 0.85rem;
-    padding: 0 0.05rem;
+    font-size: 0.95rem;
+    padding: 0 0.2rem;
+    letter-spacing: 0.08em;
   }
   .vp-card__img--pk {
     min-height: 8rem;
