@@ -2,15 +2,22 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   applyRound1NumberedDefaults,
+  copyFinalLineupFromRound2,
+  fetchFinalLineup,
+  fetchFinalRevealConfig,
   fetchRound1StagePairs,
   fetchRound2Lineup,
   importContestants,
   importRound1PairsFromPublicFiles,
   importRound2LineupFromPublicFiles,
+  saveFinalLineup,
+  saveFinalRevealConfig,
   saveRound1StagePairs,
   saveRound2Lineup,
+  type FinalRevealConfig,
 } from "@/api/client";
 import type { Round1PairMeta, Round2LineupSlot } from "@/api/types";
+import { DEFAULT_FINAL_AUDIENCE_RANGE } from "@/config/audienceSheetRanges";
 import {
   getStageContestantPreset,
   matchStageContestantNum,
@@ -34,7 +41,7 @@ function defaultR2Slots(): Round2LineupSlot[] {
   return Array.from({ length: 6 }, () => ({ ...EMPTY_R2_SLOT }));
 }
 
-type AdminStageTab = "r1" | "r2";
+type AdminStageTab = "r1" | "r2" | "final";
 
 export default function Admin() {
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +50,12 @@ export default function Admin() {
   const [r1Pairs, setR1Pairs] = useState<Round1PairMeta[]>(defaultR1Pairs);
   const [r2Slots, setR2Slots] = useState<Round2LineupSlot[]>(defaultR2Slots);
   const [stageTab, setStageTab] = useState<AdminStageTab>("r1");
+  const [finalCfg, setFinalCfg] = useState<FinalRevealConfig>({
+    sheetRange: DEFAULT_FINAL_AUDIENCE_RANGE,
+    judgeWeight: 0.6,
+    audienceWeight: 0.4,
+  });
+  const [finalSlots, setFinalSlots] = useState<Round2LineupSlot[]>(defaultR2Slots);
 
   function patchR1Pair(i: number, patch: Partial<Round1PairMeta>) {
     setR1Pairs((prev) => {
@@ -54,6 +67,14 @@ export default function Admin() {
 
   function patchR2Slot(i: number, patch: Partial<Round2LineupSlot>) {
     setR2Slots((prev) => {
+      const next = [...prev];
+      next[i] = { ...next[i], ...patch };
+      return next;
+    });
+  }
+
+  function patchFinalSlot(i: number, patch: Partial<Round2LineupSlot>) {
+    setFinalSlots((prev) => {
       const next = [...prev];
       next[i] = { ...next[i], ...patch };
       return next;
@@ -181,6 +202,97 @@ export default function Admin() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchFinalRevealConfig()
+      .then((c) => {
+        if (!cancelled) setFinalCfg(c);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchFinalLineup()
+      .then(({ slots }) => {
+        if (!cancelled) setFinalSlots(slots);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function loadFinalFromServer() {
+    setError(null);
+    try {
+      const c = await fetchFinalRevealConfig();
+      setFinalCfg(c);
+      setImportOk("已加载决赛揭晓配置（SQLite final_reveal_config）");
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function saveFinalToServer() {
+    setBusy(true);
+    setError(null);
+    setImportOk(null);
+    try {
+      const c = await saveFinalRevealConfig(finalCfg);
+      setFinalCfg(c);
+      setImportOk("决赛揭晓已保存；/stage/final-reveal 约 5s 内生效");
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadFinalLineupSlotsFromServer() {
+    setError(null);
+    try {
+      const { slots } = await fetchFinalLineup();
+      setFinalSlots(slots);
+      setImportOk("已加载决赛舞台阵容（SQLite final_lineup_meta）");
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function saveFinalLineupSlotsToServer() {
+    setBusy(true);
+    setError(null);
+    setImportOk(null);
+    try {
+      const { slots } = await saveFinalLineup(finalSlots);
+      setFinalSlots(slots);
+      setImportOk("决赛舞台 6 人已保存；大屏 /stage/final-reveal 约 5s 内更新");
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyFinalSlotsFromRound2() {
+    setBusy(true);
+    setError(null);
+    setImportOk(null);
+    try {
+      const { slots } = await copyFinalLineupFromRound2();
+      setFinalSlots(slots);
+      setImportOk("已从复活 lineup 复制并写入决赛阵容（与复活表一致，可按需再改照片）");
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onImportFile(f: File) {
     setBusy(true);
     setError(null);
@@ -301,6 +413,17 @@ export default function Admin() {
             onClick={() => setStageTab("r2")}
           >
             复活投票
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="admin-tab-final"
+            aria-selected={stageTab === "final"}
+            aria-controls="admin-panel-final"
+            className={"admin-stage-tab" + (stageTab === "final" ? " admin-stage-tab--active" : "")}
+            onClick={() => setStageTab("final")}
+          >
+            决赛揭晓
           </button>
         </div>
 
@@ -485,6 +608,150 @@ export default function Admin() {
                     </label>
                   </div>
                 ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {stageTab === "final" && (
+          <div
+            id="admin-panel-final"
+            role="tabpanel"
+            aria-labelledby="admin-tab-final"
+            className="admin-stage-panel"
+          >
+            <section className="panel round2-stage-admin">
+              <h2>决赛揭晓</h2>
+              <p className="admin-hint subtle" style={{ marginBottom: "0.75rem" }}>
+                路由 <code>/stage/final-reveal</code>。<strong>谁站在最终舞台</strong>与复活投票 lineup 分开存：表{" "}
+                <code>final_lineup_meta</code>（6 槽 ↔ Google 表 Round3 第 2～7 行）。可先一键同步复活名单再改照片/姓名。
+              </p>
+
+              <h3 className="admin-subsection-title">决赛舞台阵容（6 人）</h3>
+              <div className="r1-admin-actions" style={{ marginBottom: "0.75rem" }}>
+                <button
+                  type="button"
+                  className="btn subtle"
+                  disabled={busy}
+                  onClick={() => void loadFinalLineupSlotsFromServer()}
+                >
+                  加载决赛阵容
+                </button>
+                <button
+                  type="button"
+                  className="btn subtle"
+                  disabled={busy}
+                  onClick={() => void copyFinalSlotsFromRound2()}
+                >
+                  从复活 lineup 复制并保存
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={busy}
+                  onClick={() => void saveFinalLineupSlotsToServer()}
+                >
+                  {busy ? "保存中…" : "保存决赛阵容"}
+                </button>
+              </div>
+              <div className="r2-admin-grid" style={{ marginBottom: "1.5rem" }}>
+                {finalSlots.map((s, i) => (
+                  <div key={i} className="r2-admin-slot">
+                    <h3>决赛 Slot {i + 1}（表第 {i + 2} 行）</h3>
+                    <label>
+                      选手编号（自动填姓名+图）
+                      <select
+                        className="admin-preset-select"
+                        value={matchStageContestantNum(s.name, s.img)}
+                        onChange={(e) => {
+                          const n = parseInt(e.target.value, 10);
+                          if (n < 1) return;
+                          const c = getStageContestantPreset(n);
+                          if (c) patchFinalSlot(i, { name: c.name, img: c.img });
+                        }}
+                      >
+                        <option value={0}>— 自定义 —</option>
+                        {STAGE_CONTESTANT_PRESETS.map((c) => (
+                          <option key={c.num} value={c.num}>
+                            {c.num} · {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      显示姓名（表 A 列空时用）
+                      <input
+                        type="text"
+                        value={s.name}
+                        onChange={(e) => patchFinalSlot(i, { name: e.target.value })}
+                      />
+                    </label>
+                    <label>
+                      头像 URL
+                      <input
+                        type="text"
+                        value={s.img}
+                        placeholder="如 1.jpg 或完整路径"
+                        onChange={(e) => patchFinalSlot(i, { img: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="admin-subsection-title">拉表范围与加权</h3>
+              <p className="admin-hint subtle" style={{ marginBottom: "0.75rem" }}>
+                写入 <code>final_reveal_config</code>，API <code>GET/PUT /api/stage/final-reveal-config</code>。需{" "}
+                <code>VITE_GOOGLE_SHEET_ID</code> 与 <code>VITE_GOOGLE_SHEETS_API_KEY</code>。<strong>G 列</strong>
+                有最终分时优先用表；权重仅 G 为空时 fallback。
+              </p>
+              <div className="r1-admin-actions">
+                <button type="button" className="btn subtle" disabled={busy} onClick={() => void loadFinalFromServer()}>
+                  加载加权配置
+                </button>
+                <button type="button" className="btn primary" disabled={busy} onClick={() => void saveFinalToServer()}>
+                  {busy ? "保存中…" : "保存加权与范围"}
+                </button>
+              </div>
+              <div className="r2-admin-grid" style={{ gridTemplateColumns: "1fr", maxWidth: "36rem" }}>
+                <label>
+                  Sheets 范围（相对当前 VITE 表格 ID）
+                  <input
+                    type="text"
+                    value={finalCfg.sheetRange}
+                    placeholder={DEFAULT_FINAL_AUDIENCE_RANGE}
+                    onChange={(e) => setFinalCfg((p) => ({ ...p, sheetRange: e.target.value }))}
+                  />
+                </label>
+                <label>
+                  评委权重（0～1，与观众权重之和须约等于 1）
+                  <input
+                    type="number"
+                    step="0.05"
+                    min={0}
+                    max={1}
+                    value={finalCfg.judgeWeight}
+                    onChange={(e) =>
+                      setFinalCfg((p) => ({ ...p, judgeWeight: Number(e.target.value) }))
+                    }
+                  />
+                </label>
+                <label>
+                  观众权重（0～1）
+                  <input
+                    type="number"
+                    step="0.05"
+                    min={0}
+                    max={1}
+                    value={finalCfg.audienceWeight}
+                    onChange={(e) =>
+                      setFinalCfg((p) => ({ ...p, audienceWeight: Number(e.target.value) }))
+                    }
+                  />
+                </label>
+                <p className="admin-hint subtle">
+                  当前合计：{(finalCfg.judgeWeight + finalCfg.audienceWeight).toFixed(2)}（保存时服务端要求与 1 相差 ≤0.02）
+                </p>
               </div>
             </section>
           </div>

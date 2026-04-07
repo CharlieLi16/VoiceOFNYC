@@ -160,6 +160,48 @@ export async function saveRound2Lineup(slots: Round2LineupSlot[]): Promise<Round
   };
 }
 
+/** 决赛揭晓大屏 6 人（姓名/头像），与复活 lineup 独立 */
+export async function fetchFinalLineup(): Promise<Round2LineupResponse> {
+  const res = await fetch(apiUrl("/api/stage/final-lineup"));
+  if (!res.ok) throw new Error(await readError(res));
+  const data = (await res.json()) as { slots?: unknown; persisted?: boolean };
+  if (!Array.isArray(data.slots) || data.slots.length !== 6) {
+    throw new Error("final-lineup 响应格式错误");
+  }
+  return {
+    slots: data.slots as Round2LineupSlot[],
+    persisted: Boolean(data.persisted),
+  };
+}
+
+export async function saveFinalLineup(slots: Round2LineupSlot[]): Promise<Round2LineupResponse> {
+  if (slots.length !== 6) throw new Error("须为 6 条");
+  const res = await fetch(apiUrl("/api/stage/final-lineup"), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slots }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  const data = (await res.json()) as { slots?: Round2LineupSlot[]; persisted?: boolean };
+  return {
+    slots: data.slots ?? slots,
+    persisted: Boolean(data.persisted),
+  };
+}
+
+export async function copyFinalLineupFromRound2(): Promise<Round2LineupResponse> {
+  const res = await fetch(apiUrl("/api/stage/final-lineup/copy-from-round2"), {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  const data = (await res.json()) as { slots?: Round2LineupSlot[]; persisted?: boolean };
+  if (!Array.isArray(data.slots)) throw new Error("复制响应无效");
+  return {
+    slots: data.slots,
+    persisted: Boolean(data.persisted),
+  };
+}
+
 export async function importRound2LineupFromPublicFiles(): Promise<Round2LineupResponse> {
   const res = await fetch(apiUrl("/api/stage/round2-lineup/import-from-files"), {
     method: "POST",
@@ -170,6 +212,46 @@ export async function importRound2LineupFromPublicFiles(): Promise<Round2LineupR
   return {
     slots: data.slots,
     persisted: Boolean(data.persisted),
+  };
+}
+
+export type FinalRevealConfig = {
+  sheetRange: string;
+  judgeWeight: number;
+  audienceWeight: number;
+};
+
+export async function fetchFinalRevealConfig(): Promise<FinalRevealConfig> {
+  const res = await fetch(apiUrl("/api/stage/final-reveal-config"));
+  if (!res.ok) throw new Error(await readError(res));
+  const data = (await res.json()) as Partial<FinalRevealConfig>;
+  if (typeof data.sheetRange !== "string" || !data.sheetRange.trim()) {
+    throw new Error("final-reveal-config 响应无效");
+  }
+  return {
+    sheetRange: data.sheetRange.trim(),
+    judgeWeight: typeof data.judgeWeight === "number" ? data.judgeWeight : 0.6,
+    audienceWeight: typeof data.audienceWeight === "number" ? data.audienceWeight : 0.4,
+  };
+}
+
+export async function saveFinalRevealConfig(body: FinalRevealConfig): Promise<FinalRevealConfig> {
+  const res = await fetch(apiUrl("/api/stage/final-reveal-config"), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sheet_range: body.sheetRange.trim(),
+      judge_weight: body.judgeWeight,
+      audience_weight: body.audienceWeight,
+    }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  const data = (await res.json()) as Partial<FinalRevealConfig> & { ok?: boolean };
+  if (typeof data.sheetRange !== "string") throw new Error("保存响应无效");
+  return {
+    sheetRange: data.sheetRange.trim(),
+    judgeWeight: typeof data.judgeWeight === "number" ? data.judgeWeight : body.judgeWeight,
+    audienceWeight: typeof data.audienceWeight === "number" ? data.audienceWeight : body.audienceWeight,
   };
 }
 

@@ -1,8 +1,19 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import {
+  staffPortalGateEnabled,
+  setStaffPortalAuthed,
+} from "@/auth/staffPortal";
 
 export default function MainLayout() {
   const loc = useLocation();
+  const navigate = useNavigate();
   const r1Active = loc.pathname.startsWith("/stage/round1");
+  const gateOn = staffPortalGateEnabled();
+
+  function logout() {
+    setStaffPortalAuthed(false);
+    navigate("/login", { replace: true });
+  }
 
   return (
     <div className="app-shell">
@@ -38,6 +49,16 @@ export default function MainLayout() {
         >
           Final 揭晓
         </NavLink>
+        {gateOn ? (
+          <>
+            <span className="nav-sep" aria-hidden="true">
+              |
+            </span>
+            <button type="button" className="nav-link nav-link-btn" onClick={logout}>
+              退出登录
+            </button>
+          </>
+        ) : null}
       </nav>
       <Outlet />
     </div>

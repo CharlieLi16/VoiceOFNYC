@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchRound2Lineup } from "@/api/client";
+import {
+  fetchFinalLineup,
+  fetchFinalRevealConfig,
+  fetchRound2Lineup,
+  type FinalRevealConfig,
+} from "@/api/client";
 import type { Round2LineupSlot } from "@/api/types";
 import { parseFloatCell } from "@/api/sheetsClient";
+import { DEFAULT_FINAL_AUDIENCE_RANGE } from "@/config/audienceSheetRanges";
 import { nameFromContestantImg } from "@/config/stageContestantPresets";
 import { getSheetsPollConfig } from "@/config/sheetsEnv";
 import { useSheetRangePoll } from "@/hooks/useSheetRangePoll";
@@ -107,8 +113,12 @@ function round3JudgeAvgFromRow(r: string[] | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** 最终分：优先 G 列（与表公式一致）；否则本地 0.6×评委均分+0.4×观众均分；仅 A:B 时 B 为总分 */
-function round3FinalFromRow(r: string[] | undefined): number {
+/** 最终分：优先 G 列（与表公式一致）；否则本地 judgeW×评委 + audienceW×观众；仅 A:B 时 B 为总分 */
+function round3FinalFromRow(
+  r: string[] | undefined,
+  judgeW: number,
+  audienceW: number
+): number {
   if (!r || r.length < 2) return 0;
   const audienceAvg = parseFloatCell(r[1]);
   if (r.length < 5) return audienceAvg;
@@ -116,10 +126,14 @@ function round3FinalFromRow(r: string[] | undefined): number {
   if (r.length >= 7 && r[6] != null && String(r[6]).trim() !== "") {
     return parseFloatCell(r[6]);
   }
-  return 0.6 * judgeAvg + 0.4 * audienceAvg;
+  return judgeW * judgeAvg + audienceW * audienceAvg;
 }
 
-function buildSlots(slice: string[][], lineup: Round2LineupSlot[]): SlotView[] {
+function buildSlots(
+  slice: string[][],
+  lineup: Round2LineupSlot[],
+  weights: { judge: number; audience: number }
+): SlotView[] {
   const padded: string[][] = slice.slice(0, MAX_ROWS);
   while (padded.length < MAX_ROWS) padded.push([]);
   return padded.map((r, i) => {
@@ -134,7 +148,7 @@ function buildSlots(slice: string[][], lineup: Round2LineupSlot[]): SlotView[] {
     const hasBreakdown = (r?.length ?? 0) >= 5;
     const audienceAvg = parseFloatCell(r?.[1]);
     const judgeAvg = hasBreakdown ? round3JudgeAvgFromRow(r) : 0;
-    const score = round3FinalFromRow(r);
+    const score = round3FinalFromRow(r, weights.judge, weights.audience);
     return {
       slotIndex: i,
       name: displayName,
@@ -154,28 +168,44 @@ function medalClass(m: "gold" | "silver" | "bronze" | null): string {
   return "";
 }
 
+const DEFAULT_WEIGHTS = { judge: 0.6, audience: 0.4 };
+
 export default function FinalRevealStage() {
-  const cfg = getSheetsPollConfig();
-  const range = cfg.finalAudienceRange || cfg.round2AudienceRange;
+  const envCfg = getSheetsPollConfig();
+  const envRange = envCfg.finalAudienceRange || envCfg.round2AudienceRange;
+  const [frCfg, setFrCfg] = useState<FinalRevealConfig | null>(null);
+  const range = (frCfg?.sheetRange?.trim() || envRange || DEFAULT_FINAL_AUDIENCE_RANGE).trim();
+  const judgeW = frCfg?.judgeWeight ?? DEFAULT_WEIGHTS.judge;
+  const audienceW = frCfg?.audienceWeight ?? DEFAULT_WEIGHTS.audience;
   const { rows, error } = useSheetRangePoll(range);
 
   const [lineupApi, setLineupApi] = useState<Round2LineupSlot[] | null>(null);
-  const [lineupFiles, setLineupFiles] = useState<Round2LineupSlot[] | null>(null);
   const [revealedCount, setRevealedCount] = useState(0);
   const [winnerHighlighted, setWinnerHighlighted] = useState(false);
   const [top3Only, setTop3Only] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    const tick = () => {
-      fetchRound2Lineup()
-        .then(({ slots }) => {
-          if (!cancelled) setLineupApi(slots);
-        })
-        .catch(() => {});
+    const tick = async () => {
+      try {
+        const { slots } = await fetchFinalLineup();
+        if (!cancelled) setLineupApi(slots);
+        return;
+      } catch {
+        /* 决赛阵容 API 不可用时回退复活 lineup */
+      }
+      try {
+        const { slots } = await fetchRound2Lineup();
+        if (!cancelled) setLineupApi(slots);
+        return;
+      } catch {
+        /* 再回退静态 JSON */
+      }
+      const files = await fetchRound2LineupFromPublicFiles();
+      if (!cancelled && files) setLineupApi(files);
     };
-    tick();
-    const interval = window.setInterval(tick, 5000);
+    void tick();
+    const interval = window.setInterval(() => void tick(), 5000);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
@@ -184,18 +214,27 @@ export default function FinalRevealStage() {
 
   useEffect(() => {
     let cancelled = false;
-    if (lineupApi != null) return undefined;
-    fetchRound2LineupFromPublicFiles().then((slots) => {
-      if (!cancelled && slots) setLineupFiles(slots);
-    });
+    const load = () => {
+      fetchFinalRevealConfig()
+        .then((c) => {
+          if (!cancelled) setFrCfg(c);
+        })
+        .catch(() => {});
+    };
+    load();
+    const id = window.setInterval(load, 5000);
     return () => {
       cancelled = true;
+      window.clearInterval(id);
     };
-  }, [lineupApi]);
+  }, []);
 
-  const lineup = lineupApi ?? lineupFiles ?? EMPTY_LINEUP;
+  const lineup = lineupApi ?? EMPTY_LINEUP;
 
-  const slots = useMemo(() => buildSlots(rows, lineup), [rows, lineup]);
+  const slots = useMemo(
+    () => buildSlots(rows, lineup, { judge: judgeW, audience: audienceW }),
+    [rows, lineup, judgeW, audienceW]
+  );
 
   const scores = useMemo(() => slots.map((s) => s.score), [slots]);
 
@@ -254,9 +293,14 @@ export default function FinalRevealStage() {
       <h1 className="fr-title">Final Round</h1>
       <p className="fr-sub">
         空格：按表行顺序逐个揭晓 → 再按<strong>最终分</strong>排序并发奖 → 再按仅显示前三 · <kbd>R</kbd> 重置 ·
-        Round3 宽表：<strong>G</strong> 最终分（0.6×评委均分+0.4×观众均分），<strong>B</strong> 观众均分，<strong>C–E</strong>
-        三评委，<strong>F</strong> 评委均分（公式）· 数据 <code>{range}</code> · lineup 同{" "}
-        <code>/stage/round2</code>
+        Round3 宽表：<strong>G</strong> 列有值时优先用表内最终分；否则本页按{" "}
+        <strong>
+          {judgeW}×评委均分+{audienceW}×观众均分
+        </strong>
+        。<strong>B</strong> 观众均分，<strong>C–E</strong> 三评委，<strong>F</strong> 评委均分 · 数据{" "}
+        <code>{range}</code>
+        {frCfg ? "（后台可改）" : "（未连上 API 时用 .env 默认）"} · 选手照与站位见后台「决赛揭晓」阵容（API{" "}
+        <code>/api/stage/final-lineup</code>，失败时回退复活 lineup）
       </p>
       {error && <div className="fr-banner">{error}</div>}
 

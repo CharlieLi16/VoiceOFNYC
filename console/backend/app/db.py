@@ -117,6 +117,25 @@ def init_db() -> None:
             )
             """
         )
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS final_reveal_config (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                sheet_range TEXT NOT NULL DEFAULT 'Round3Audience!A2:I7',
+                judge_weight REAL NOT NULL DEFAULT 0.6,
+                audience_weight REAL NOT NULL DEFAULT 0.4
+            )
+            """
+        )
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS final_lineup_meta (
+                slot_num INTEGER PRIMARY KEY CHECK (slot_num >= 1 AND slot_num <= 6),
+                name TEXT NOT NULL DEFAULT '',
+                img TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
         c.commit()
     _migrate_contestants_juges_to_judges()
     _migrate_drop_musicians_column()
@@ -419,6 +438,127 @@ def seed_round2_lineup_from_public_files() -> bool:
 def seed_round2_lineup_empty_defaults() -> None:
     """占位 6 行（无图），便于 Admin 编辑。"""
     replace_round2_lineup([{"name": f"选手 {i}", "img": ""} for i in range(1, 7)])
+
+
+def final_lineup_meta_count() -> int:
+    with _conn() as c:
+        return int(c.execute("SELECT COUNT(*) FROM final_lineup_meta").fetchone()[0])
+
+
+def get_final_lineup() -> list[dict[str, Any]]:
+    """决赛揭晓大屏 6 槽；与 round2 lineup 结构相同，表独立。"""
+    with _conn() as c:
+        rows = {
+            int(r["slot_num"]): r
+            for r in c.execute(
+                "SELECT slot_num, name, img FROM final_lineup_meta ORDER BY slot_num"
+            )
+        }
+    out: list[dict[str, Any]] = []
+    for n in range(1, 7):
+        r = rows.get(n)
+        if r:
+            out.append(
+                {
+                    "name": str(r["name"] or ""),
+                    "img": str(r["img"] or ""),
+                }
+            )
+        else:
+            out.append({"name": "", "img": ""})
+    return out
+
+
+def replace_final_lineup(slots: list[dict[str, Any]]) -> None:
+    if len(slots) != 6:
+        raise ValueError("slots 必须为长度 6 的数组")
+    with _conn() as c:
+        c.execute("DELETE FROM final_lineup_meta")
+        for i, p in enumerate(slots):
+            n = i + 1
+            c.execute(
+                """
+                INSERT INTO final_lineup_meta (slot_num, name, img)
+                VALUES (?,?,?)
+                """,
+                (
+                    n,
+                    str(p.get("name", "") or ""),
+                    normalize_public_contestant_img(p.get("img", "") or ""),
+                ),
+            )
+        c.commit()
+
+
+def seed_final_lineup_from_round2() -> None:
+    """把当前复活 lineup 复制到决赛舞台（可再在 Admin 里改照片/人）。"""
+    replace_final_lineup(get_round2_lineup())
+
+
+DEFAULT_FINAL_REVEAL_SHEET_RANGE = "Round3Audience!A2:I7"
+
+
+def _ensure_final_reveal_config_row() -> None:
+    with _conn() as c:
+        n = int(c.execute("SELECT COUNT(*) FROM final_reveal_config").fetchone()[0])
+        if n == 0:
+            c.execute(
+                """
+                INSERT INTO final_reveal_config (id, sheet_range, judge_weight, audience_weight)
+                VALUES (1, ?, 0.6, 0.4)
+                """,
+                (DEFAULT_FINAL_REVEAL_SHEET_RANGE,),
+            )
+            c.commit()
+
+
+def get_final_reveal_config() -> dict[str, Any]:
+    """大屏 /stage/final-reveal：Google 拉取范围 + 无 G 列时的加权 fallback。"""
+    _ensure_final_reveal_config_row()
+    with _conn() as c:
+        r = c.execute(
+            "SELECT sheet_range, judge_weight, audience_weight FROM final_reveal_config WHERE id = 1"
+        ).fetchone()
+    if not r:
+        return {
+            "sheetRange": DEFAULT_FINAL_REVEAL_SHEET_RANGE,
+            "judgeWeight": 0.6,
+            "audienceWeight": 0.4,
+        }
+    return {
+        "sheetRange": str(r["sheet_range"] or DEFAULT_FINAL_REVEAL_SHEET_RANGE),
+        "judgeWeight": float(r["judge_weight"]),
+        "audienceWeight": float(r["audience_weight"]),
+    }
+
+
+def replace_final_reveal_config(
+    *,
+    sheet_range: str,
+    judge_weight: float,
+    audience_weight: float,
+) -> dict[str, Any]:
+    sr = str(sheet_range or "").strip()
+    if not sr or len(sr) > 256:
+        raise ValueError("sheet_range 须为 1～256 字符")
+    jw = float(judge_weight)
+    aw = float(audience_weight)
+    if not (0.0 <= jw <= 1.0 and 0.0 <= aw <= 1.0):
+        raise ValueError("权重须在 0～1 之间")
+    if abs(jw + aw - 1.0) > 0.02:
+        raise ValueError("评委权重 + 观众权重之和须约为 1（误差 ≤0.02）")
+    _ensure_final_reveal_config_row()
+    with _conn() as c:
+        c.execute(
+            """
+            UPDATE final_reveal_config
+            SET sheet_range = ?, judge_weight = ?, audience_weight = ?
+            WHERE id = 1
+            """,
+            (sr, jw, aw),
+        )
+        c.commit()
+    return get_final_reveal_config()
 
 
 def _finite_num_str(v: Any) -> str:

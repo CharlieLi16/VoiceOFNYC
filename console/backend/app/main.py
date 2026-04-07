@@ -54,6 +54,14 @@ async def lifespan(app: FastAPI):
                 db.seed_round2_lineup_empty_defaults()
             except Exception:
                 pass
+    if db.final_lineup_meta_count() == 0:
+        try:
+            db.seed_final_lineup_from_round2()
+        except Exception:
+            try:
+                db.replace_final_lineup([{"name": f"选手 {i}", "img": ""} for i in range(1, 7)])
+            except Exception:
+                pass
     yield
 
 
@@ -254,6 +262,69 @@ def api_round2_lineup_import_from_files() -> JSONResponse:
             "ok": True,
             "slots": db.get_round2_lineup(),
             "persisted": db.round2_lineup_meta_count() > 0,
+        }
+    )
+
+
+class FinalRevealConfigPutBody(BaseModel):
+    """决赛揭晓页：Sheets 拉取范围（相对 spreadsheet id）与无 G 列时的加权 fallback。"""
+
+    sheet_range: str = Field(..., min_length=1, max_length=256)
+    judge_weight: float = Field(..., ge=0.0, le=1.0)
+    audience_weight: float = Field(..., ge=0.0, le=1.0)
+
+
+@app.get("/api/stage/final-reveal-config")
+def api_get_final_reveal_config() -> JSONResponse:
+    return JSONResponse(db.get_final_reveal_config())
+
+
+@app.put("/api/stage/final-reveal-config")
+def api_put_final_reveal_config(body: FinalRevealConfigPutBody) -> JSONResponse:
+    try:
+        cfg = db.replace_final_reveal_config(
+            sheet_range=body.sheet_range,
+            judge_weight=body.judge_weight,
+            audience_weight=body.audience_weight,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return JSONResponse({"ok": True, **cfg})
+
+
+@app.get("/api/stage/final-lineup")
+def api_get_final_lineup() -> JSONResponse:
+    return JSONResponse(
+        {
+            "slots": db.get_final_lineup(),
+            "persisted": db.final_lineup_meta_count() > 0,
+        }
+    )
+
+
+@app.put("/api/stage/final-lineup")
+def api_put_final_lineup(body: Round2LineupPutBody) -> JSONResponse:
+    try:
+        db.replace_final_lineup([s.model_dump() for s in body.slots])
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return JSONResponse(
+        {
+            "ok": True,
+            "slots": db.get_final_lineup(),
+            "persisted": db.final_lineup_meta_count() > 0,
+        }
+    )
+
+
+@app.post("/api/stage/final-lineup/copy-from-round2")
+def api_final_lineup_copy_from_round2() -> JSONResponse:
+    db.seed_final_lineup_from_round2()
+    return JSONResponse(
+        {
+            "ok": True,
+            "slots": db.get_final_lineup(),
+            "persisted": db.final_lineup_meta_count() > 0,
         }
     )
 

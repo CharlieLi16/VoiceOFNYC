@@ -77,6 +77,14 @@ body {
   color: var(--accent-gold);
 }
 
+.nav-link-btn {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+}
+
 .page {
   flex: 1;
   padding: 1.25rem clamp(1rem, 3vw, 2rem);
@@ -90,9 +98,43 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   text-align: center;
   min-height: 70vh;
+  padding: 2rem 1rem 3rem;
+  box-sizing: border-box;
+}
+
+.home-hub {
+  width: 100%;
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.home-section {
+  margin-top: 2rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  text-align: center;
+}
+
+.home-section:first-of-type {
+  margin-top: 1.5rem;
+}
+
+.home-section-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+.home-section-hint {
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  line-height: 1.5;
 }
 
 .display-title {
@@ -108,7 +150,7 @@ body {
 
 .home-tagline {
   color: var(--text-dim);
-  margin: 0 0 2rem;
+  margin: 0 0 0.5rem;
 }
 
 .home-actions {
@@ -144,6 +186,18 @@ body {
   box-shadow: 0 0 20px rgba(255, 45, 106, 0.25);
 }
 
+.cta-ghost {
+  border-color: var(--border, rgba(255, 255, 255, 0.2));
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.03);
+  font-weight: 500;
+}
+
+.cta-ghost:hover {
+  border-color: var(--accent-rose);
+  color: var(--text);
+}
+
 .home-hint {
   margin-top: 2.5rem;
   max-width: 36rem;
@@ -154,6 +208,116 @@ body {
 
 .home-hint code {
   font-size: 0.72rem;
+  word-break: break-all;
+}
+
+/* Staff portal login */
+.staff-login-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 75vh;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
+}
+
+.staff-login-card {
+  width: 100%;
+  max-width: 22rem;
+  padding: 1.75rem 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--bg-panel, rgba(20, 12, 24, 0.85));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.staff-login-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin: 0 0 1rem;
+  color: var(--text);
+}
+
+.staff-login-audience {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-dim);
+  text-align: left;
+}
+
+.staff-login-vote-link {
+  display: inline-block;
+  margin-bottom: 1.25rem;
+}
+
+.staff-login-divider {
+  margin: 0 0 1rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+}
+
+.staff-login-form {
+  text-align: left;
+}
+
+.staff-login-label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-bottom: 0.75rem;
+}
+
+.staff-login-label input {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.staff-login-error {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  color: #f47174;
+}
+
+.staff-login-submit {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.staff-login-hint {
+  margin: 1.1rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+  text-align: left;
+}
+
+.staff-login-hint.subtle {
+  margin-top: 0.65rem;
+  opacity: 0.85;
+}
+
+.staff-login-footer {
+  margin-top: 1.5rem;
+  font-size: 0.75rem;
+  text-align: center;
+  max-width: 24rem;
+  line-height: 1.5;
+}
+
+.staff-login-footer code {
+  font-size: 0.68rem;
   word-break: break-all;
 }
 
@@ -270,6 +434,13 @@ body {
   margin: 0 0 0.35rem;
   color: var(--text);
   letter-spacing: 0.02em;
+}
+
+.admin-subsection-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--text);
 }
 
 .admin-section--stage .admin-stage-tabs {
