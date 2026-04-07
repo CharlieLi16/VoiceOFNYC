@@ -284,6 +284,24 @@ body {
   box-sizing: border-box;
 }
 
+.staff-login-remember {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+.staff-login-remember input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+  accent-color: var(--accent, #e91e8c);
+}
+
 .staff-login-error {
   margin: 0 0 0.5rem;
   font-size: 0.82rem;

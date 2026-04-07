@@ -1,5 +1,7 @@
-/** sessionStorage 标记；仅用于挡住控制台 SPA，不能替代服务端鉴权 */
-const STORAGE_KEY = "voiceofnyc-staff-portal";
+/** 本次浏览器会话内有效（关标签后通常需重登） */
+const SESSION_KEY = "voiceofnyc-staff-portal";
+/** 勾选「记住我」后写入，关闭浏览器后再开仍保持登录 */
+const PERSIST_KEY = "voiceofnyc-staff-portal-persist";
 
 export function staffPortalGateEnabled(): boolean {
   const p = import.meta.env.VITE_STAFF_PORTAL_PASSWORD;
@@ -8,12 +10,32 @@ export function staffPortalGateEnabled(): boolean {
 
 export function isStaffPortalAuthed(): boolean {
   if (!staffPortalGateEnabled()) return true;
-  return sessionStorage.getItem(STORAGE_KEY) === "1";
+  try {
+    return (
+      sessionStorage.getItem(SESSION_KEY) === "1" || localStorage.getItem(PERSIST_KEY) === "1"
+    );
+  } catch {
+    return false;
+  }
 }
 
-export function setStaffPortalAuthed(ok: boolean): void {
-  if (ok) sessionStorage.setItem(STORAGE_KEY, "1");
-  else sessionStorage.removeItem(STORAGE_KEY);
+export function setStaffPortalAuthed(ok: boolean, opts?: { persist?: boolean }): void {
+  try {
+    if (ok) {
+      if (opts?.persist) {
+        localStorage.setItem(PERSIST_KEY, "1");
+        sessionStorage.removeItem(SESSION_KEY);
+      } else {
+        sessionStorage.setItem(SESSION_KEY, "1");
+        localStorage.removeItem(PERSIST_KEY);
+      }
+    } else {
+      sessionStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(PERSIST_KEY);
+    }
+  } catch {
+    /* private mode / disabled storage */
+  }
 }
 
 export function checkStaffPortalPassword(input: string): boolean {

@@ -19,13 +19,14 @@ export default function StaffLogin() {
   const from = safeStaffRedirect((loc.state as { from?: string } | null)?.from);
 
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     if (checkStaffPortalPassword(password)) {
-      setStaffPortalAuthed(true);
+      setStaffPortalAuthed(true, { persist: rememberMe });
       navigate(from, { replace: true });
       return;
     }
@@ -57,6 +58,15 @@ export default function StaffLogin() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="由部署环境配置"
             />
+          </label>
+          <label className="staff-login-remember">
+            <input
+              type="checkbox"
+              name="remember"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+            />
+            记住我（本机保留登录，共用电脑请取消勾选）
           </label>
           {error ? <p className="staff-login-error">{error}</p> : null}
           <button type="submit" className="btn primary staff-login-submit">
