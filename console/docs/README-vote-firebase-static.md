@@ -50,6 +50,39 @@ npx firebase-tools@latest deploy --only functions,firestore:rules
 - **`DISABLED`**：不校验码。
 - **内联码列表**：不扣 Firestore 票；多轮防刷请用 `__TICKETS__`。
 
+## 联调：测试投票码（`VOTE_TEST_CODE`）
+
+用于 **`VOTE_CODES=__TICKETS__`** 或**内联码列表**时，在不消耗 **Firestore 真实票**（不更新 `tickets`、不占内联列表名额）的前提下，反复走通 **`submitVote` → 写 Google 表 → 写 `votes` 审计**。  
+**仍会真实写表**，联调后请在表里核对或手工回滚测试行。
+
+### Cloud Functions
+
+- 参数名：**`VOTE_TEST_CODE`**（[`functions/index.js`](../firebase-vote/functions/index.js) 内 `defineString`，默认空）。
+- **未配置或为空**：行为与原来一致，无测试码通道。
+- **配置为非空字符串**：观众提交的投票码**与之完全相同（忽略大小写）**时，**直接通过验票**，且不执行 Firestore 扣票逻辑。
+- **本地 / 部署**：在 `console/firebase-vote/functions/` 下使用 **`.env`**（勿提交仓库，见 [`functions/.env.example`](../firebase-vote/functions/.env.example)），例如 `VOTE_TEST_CODE=你的测试串`；或使用 Firebase 控制台为 Functions 配置同名**环境变量**，再 **`deploy --only functions`**。
+
+### 投票页（`vote-config.js`）
+
+- 字段 **`testVoteCode`**：须与云端 **`VOTE_TEST_CODE` 字符串一致**，否则前端不会显示联调辅助，且用户手输的码也无法与云端规则对齐。
+- 非空时，[`vote.html`](../frontend/public/vote/vote.html) 在投票码区域显示 **「填入测试码」** 按钮，并有一段简短说明。
+- **URL 预填**：`?testVote=1` 或 `?test=1` 会在已配置 `testVoteCode` 时自动把该码填入输入框（与 `?voteCode=` 不同，后者用于真实个人码）。
+
+### 正式现场前必做
+
+1. 删除或清空 Functions 的 **`VOTE_TEST_CODE`**（及本地 **`.env`** 中对应行），重新部署 Functions。  
+2. 将 **`vote-config.js` 的 `testVoteCode` 改回 `""`**，重新发布静态资源 **`dist/vote/`**。  
+
+否则观众若知道测试串即可绕过真实票校验（仍受「每机一票」等前端习惯限制，但**不属于正式票务模型**）。
+
+### 排查「投票码无效或已使用」
+
+该提示来自 **Callable `submitVote`**，与 **Firestore 规则无关**。部署较新的 Functions 后，失败时会返回**更具体的中文原因**（无此票 / 本环节已用 / 内联白名单不匹配等）。
+
+- **`__TICKETS__`**：票必须是 `events/{eventId}/tickets/{投票码}` 文档 ID，与观众输入**完全一致**（建议统一大写、保留横杠）。测试码 **`cssa2026`** 仅在云端配置了 **`VOTE_TEST_CODE`** 且已 **`deploy --only functions`** 后才会放行且不扣票；只改前端 `vote-config.js` 不够。  
+- **内联列表**：码必须在 Secret `VOTE_CODES` 的列表里。  
+- **本地 `.env` 里的 `VOTE_TEST_CODE`**：只对**从你本机执行 `firebase deploy` 时打进包里的配置**生效；若用 CI/CD 或未把变量配到 Firebase，线上仍为空。
+
 ## 浏览器「每机一票」
 
 localStorage 按 **`eventId` + 实际 roundId** 区分环节。

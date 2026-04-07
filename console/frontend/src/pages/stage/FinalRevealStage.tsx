@@ -9,6 +9,7 @@ import {
 import type { Round2LineupSlot } from "@/api/types";
 import { parseFloatCell } from "@/api/sheetsClient";
 import { DEFAULT_FINAL_AUDIENCE_RANGE } from "@/config/audienceSheetRanges";
+import { useStageCleanUi } from "@/utils/stageCleanUi";
 import { nameFromContestantImg } from "@/config/stageContestantPresets";
 import { getSheetsPollConfig } from "@/config/sheetsEnv";
 import { useSheetRangePoll } from "@/hooks/useSheetRangePoll";
@@ -177,6 +178,7 @@ export default function FinalRevealStage() {
   const range = (frCfg?.sheetRange?.trim() || envRange || DEFAULT_FINAL_AUDIENCE_RANGE).trim();
   const judgeW = frCfg?.judgeWeight ?? DEFAULT_WEIGHTS.judge;
   const audienceW = frCfg?.audienceWeight ?? DEFAULT_WEIGHTS.audience;
+  const cleanUi = useStageCleanUi();
   const { rows, error } = useSheetRangePoll(range);
 
   const [lineupApi, setLineupApi] = useState<Round2LineupSlot[] | null>(null);
@@ -292,15 +294,23 @@ export default function FinalRevealStage() {
       </Link>
       <h1 className="fr-title">Final Round</h1>
       <p className="fr-sub">
-        空格：按表行顺序逐个揭晓 → 再按<strong>最终分</strong>排序并发奖 → 再按仅显示前三 · <kbd>R</kbd> 重置 ·
-        Round3 宽表：<strong>G</strong> 列有值时优先用表内最终分；否则本页按{" "}
-        <strong>
-          {judgeW}×评委均分+{audienceW}×观众均分
-        </strong>
-        。<strong>B</strong> 观众均分，<strong>C–E</strong> 三评委，<strong>F</strong> 评委均分 · 数据{" "}
-        <code>{range}</code>
-        {frCfg ? "（后台可改）" : "（未连上 API 时用 .env 默认）"} · 选手照与站位见后台「决赛揭晓」阵容（API{" "}
-        <code>/api/stage/final-lineup</code>，失败时回退复活 lineup）
+        {cleanUi ? (
+          <>
+            <kbd>空格</kbd>：按顺序揭晓 → 按<strong>最终分</strong>排序发奖 → 仅显示前三 · <kbd>R</kbd> 重置
+          </>
+        ) : (
+          <>
+            空格：按表行顺序逐个揭晓 → 再按<strong>最终分</strong>排序并发奖 → 再按仅显示前三 · <kbd>R</kbd> 重置 ·
+            Round3 宽表：<strong>G</strong> 列有值时优先用表内最终分；否则本页按{" "}
+            <strong>
+              {judgeW}×评委均分+{audienceW}×观众均分
+            </strong>
+            。<strong>B</strong> 观众均分，<strong>C–E</strong> 三评委，<strong>F</strong> 评委均分 · 数据{" "}
+            <code>{range}</code>
+            {frCfg ? "（后台可改）" : "（未连上 API 时用 .env 默认）"} · 选手照与站位见后台「决赛揭晓」阵容（API{" "}
+            <code>/api/stage/final-lineup</code>，失败时回退复活 lineup）
+          </>
+        )}
       </p>
       {error && <div className="fr-banner">{error}</div>}
 

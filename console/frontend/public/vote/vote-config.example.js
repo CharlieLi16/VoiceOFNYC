@@ -31,6 +31,11 @@ window.__VOTE_PAGE_CONFIG = {
   ],
   oneVotePerBrowser: true,
   requireVoteCode: true,
+  /**
+   * 联调用：与 Functions 环境参数 VOTE_TEST_CODE 设为同一字符串后，Callable 放行且不扣票。
+   * 非空时页面显示「填入测试码」；链接可加 ?testVote=1 自动预填。正式现场留空。
+   */
+  // testVoteCode: "CSSA-VOTE-TEST",
   /** 设为 false 则忽略 URL 里的 voteCode/code（默认会从 ?voteCode= 预填，方便短信私发） */
   // allowVoteCodeFromUrl: false,
   lockBrowserAfterSubmit: false,

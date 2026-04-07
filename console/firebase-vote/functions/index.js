@@ -4,6 +4,8 @@
  *
  * VOTE_CODES：DISABLED | __TICKETS__ | 内联逗号/换行列表（见 parseInlineCodes）
  * __TICKETS__ 时：Callable 须传 roundId（ALLOWED_ROUND_IDS）；Firestore tickets 用 usedRounds[roundId] 按轮扣次。
+ *
+ * VOTE_TEST_CODE（可选 String 参数，默认空）：非空时与该串（不分大小写）相等的投票码直接通过验票且不扣 Firestore 票，供联调；生产勿设。
  */
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
@@ -17,6 +19,12 @@ const staffPublishSecret = defineSecret("STAFF_PUBLISH_SECRET");
 const voteIngestSecret = defineString("VOTE_INGEST_SECRET", {
   default: "",
   description: "与 Apps Script 脚本属性 VOTE_INGEST_SECRET 一致；未设脚本属性可留空",
+});
+
+/** 非空时：与该字符串（不分大小写）相等的投票码始终通过 Callable 验票，且不消耗 Firestore 票。生产务必留空。 */
+const voteTestCode = defineString("VOTE_TEST_CODE", {
+  default: "",
+  description: "测试专用投票码；与 vote-config.js 的 testVoteCode 一致时使用",
 });
 
 if (!admin.apps.length) {
@@ -221,11 +229,14 @@ function parseInlineCodes(raw) {
 
 /**
  * Firestore __TICKETS__：同一码在每个 roundId 下各可用一次。旧数据仅有 used:true 且无 usedRounds 时视为已耗尽（旧版全局一次）。
+ * @returns {Promise<{ ok: true } | { ok: false, reason: string }>}
  */
 async function tryConsumeTicket(eventId, rawCode, voteId, roundId) {
   const code = String(rawCode || "").trim().toUpperCase();
   const rid = String(roundId || "").trim();
-  if (!code || !rid) return false;
+  if (!code || !rid) {
+    return { ok: false, reason: "请填写投票码。" };
+  }
   const db = admin.firestore();
   const ref = db.collection("events").doc(eventId).collection("tickets").doc(code);
   try {
@@ -251,23 +262,55 @@ async function tryConsumeTicket(eventId, rawCode, voteId, roundId) {
         lastVoteId: voteId,
       });
     });
-    return true;
+    return { ok: true };
   } catch (e) {
-    console.warn("ticket check failed", code.slice(0, 6) + "…", e.message);
-    return false;
+    const msg = String(e && e.message ? e.message : e);
+    if (msg === "no_ticket") {
+      return {
+        ok: false,
+        reason:
+          "票库中无此码（请确认 Firestore tickets 文档 ID 与输入一致，含横杠；或改用已配置的测试码并重新 deploy Functions）。",
+      };
+    }
+    if (msg === "already_used_round") {
+      return { ok: false, reason: "该投票码在本环节已使用过。" };
+    }
+    if (msg === "already_used_legacy") {
+      return {
+        ok: false,
+        reason: "该码为旧版「全场单次」票，已标记为已使用；请换码或在 Firestore 重置该文档。",
+      };
+    }
+    console.warn("ticket check failed", code.slice(0, 6) + "…", msg);
+    return { ok: false, reason: "投票码校验失败（请稍后重试或联系工作人员）。" };
   }
 }
 
+/**
+ * @returns {Promise<{ ok: true } | { ok: false, reason: string }>}
+ */
 async function voteCodeAllowsSheet(eventId, submitted, voteId, secretRaw, roundId) {
+  const testWant = voteTestCode.value().trim();
+  const sub = String(submitted || "").trim().toUpperCase();
+  if (testWant && sub === testWant.toUpperCase()) {
+    return { ok: true };
+  }
   const inline = parseInlineCodes(secretRaw);
   if (inline === null) {
-    return true;
+    return { ok: true };
   }
-  const s = String(submitted || "").trim().toUpperCase();
+  if (!sub) {
+    return { ok: false, reason: "请填写投票码。" };
+  }
   if (inline.size > 0) {
-    return inline.has(s);
+    if (inline.has(sub)) return { ok: true };
+    return {
+      ok: false,
+      reason:
+        "投票码不在当前白名单内（Secret 内联列表）。若要用测试码，请设 VOTE_TEST_CODE 与 vote-config.testVoteCode 一致并重新部署 Functions。",
+    };
   }
-  return tryConsumeTicket(eventId, s, voteId, roundId);
+  return tryConsumeTicket(eventId, sub, voteId, roundId);
 }
 
 /**
@@ -572,15 +615,18 @@ exports.submitVote = onCall(
       assertAllowedRoundId(roundIdNorm);
     }
 
-    const okCode = await voteCodeAllowsSheet(
+    const codeCheck = await voteCodeAllowsSheet(
       eventId,
       voteCode,
       voteId,
       voteCodesSecret.value(),
       roundIdNorm
     );
-    if (!okCode) {
-      throw new HttpsError("invalid-argument", "投票码无效或已使用。");
+    if (!codeCheck.ok) {
+      throw new HttpsError(
+        "invalid-argument",
+        codeCheck.reason || "投票码无效或已使用。"
+      );
     }
 
     const url = voteIngestUrl.value().trim();
@@ -663,15 +709,15 @@ exports.forwardVoteToSheet = onDocumentCreated(
       console.warn("skip vote: roundId missing or not allowed for __TICKETS__");
       return;
     }
-    const okCode = await voteCodeAllowsSheet(
+    const codeCheck = await voteCodeAllowsSheet(
       eventId,
       d.voteCode,
       voteId,
       voteCodesSecret.value(),
       roundId
     );
-    if (!okCode) {
-      console.warn("skip vote: voteCode rejected (sheet unchanged)");
+    if (!codeCheck.ok) {
+      console.warn("skip vote: voteCode rejected", codeCheck.reason || "");
       return;
     }
 

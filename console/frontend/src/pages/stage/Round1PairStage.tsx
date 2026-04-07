@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { fetchRound1StagePairs } from "@/api/client";
+import { useStageCleanUi } from "@/utils/stageCleanUi";
 import { parseRound1PairTotalsFromRow } from "@/api/sheetsClient";
 import { getSheetsPollConfig } from "@/config/sheetsEnv";
 import { useSheetRangePoll } from "@/hooks/useSheetRangePoll";
@@ -60,11 +61,14 @@ export default function Round1PairStage() {
   const rowIndex = pairNum - 1;
 
   const cfg = getSheetsPollConfig();
+  const cleanUi = useStageCleanUi();
   const { rows, error } = useSheetRangePoll(cfg.round1AudienceRange);
   /** 后端 SQLite 有数据时优先使用；null 表示尚未成功拉取 API */
   const [dbList, setDbList] = useState<PairMeta[] | null>(null);
   const [fallbackList, setFallbackList] = useState<PairMeta[]>([]);
   const [pairFileMeta, setPairFileMeta] = useState<PairFileResult | undefined>(undefined);
+  /** 底部「第一轮…第五轮」条：投屏时可按 R 收起 */
+  const [pairNavVisible, setPairNavVisible] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,6 +150,15 @@ export default function Round1PairStage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+
+      if (e.code === "KeyR") {
+        e.preventDefault();
+        setPairNavVisible((v) => !v);
+        return;
+      }
+
       const map: Record<string, number> = {
         Digit1: 1,
         Digit2: 2,
@@ -215,18 +228,28 @@ export default function Round1PairStage() {
         <span className="percentage-text">{p2}%</span>
       </div>
 
-      <nav className="r1pk-pair-nav" aria-label="切换组别">
+      <nav
+        className={`r1pk-pair-nav${pairNavVisible ? "" : " r1pk-pair-nav--hidden"}`}
+        aria-label="切换组别"
+        aria-hidden={!pairNavVisible}
+      >
         {[1, 2, 3, 4, 5].map((n) => (
           <Link key={n} to={`/stage/round1/${n}`} className={n === pairNum ? "active" : ""}>
             {ROUND1_LABELS[n - 1] ?? n}
           </Link>
         ))}
       </nav>
-      <p className="stage-sub" style={{ marginTop: "0.5rem", fontSize: "0.8rem" }}>
-        键盘 <kbd>1</kbd>–<kbd>5</kbd> 切换组别 · 读取 <code>{cfg.round1AudienceRange}</code> 第 {pairNum} 条数据行
-        （全表通常第 {pairNum + 1} 行，第 1 行为表头）· 柱高 =（观众左+评委左）:（观众右+评委右）· 头图/姓名{" "}
-        <code>GET /api/stage/round1-pairs</code>
-      </p>
+      {!cleanUi ? (
+        <p className="stage-sub" style={{ marginTop: "0.5rem", fontSize: "0.8rem" }}>
+          键盘 <kbd>1</kbd>–<kbd>5</kbd> 切换组别 · <kbd>R</kbd> 显示/隐藏下方「第 N 轮」条 · 读取{" "}
+          <code>{cfg.round1AudienceRange}</code> 第 {pairNum} 条数据行（全表通常第 {pairNum + 1} 行，第 1 行为表头）· 柱高 =
+          （观众左+评委左）:（观众右+评委右）· 头图/姓名 <code>GET /api/stage/round1-pairs</code>
+        </p>
+      ) : (
+        <p className="stage-sub stage-sub--clean" style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>
+          键盘 <kbd>1</kbd>–<kbd>5</kbd> 切换组别 · <kbd>R</kbd> 显示/隐藏下方轮次条
+        </p>
+      )}
     </div>
   );
 }

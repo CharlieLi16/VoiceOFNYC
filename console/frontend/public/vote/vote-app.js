@@ -395,6 +395,37 @@ async function init() {
     codeInput.value = prefillCode;
   }
 
+  const testCodeRaw = String(cfg?.testVoteCode ?? "").trim();
+  if (testCodeRaw && codeWrap && displayCfg.requireVoteCode !== false) {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if ((q.get("testVote") === "1" || q.get("test") === "1") && codeInput) {
+        codeInput.value = testCodeRaw.toUpperCase();
+        syncSubmitEnabled();
+      }
+    } catch {
+      /* ignore */
+    }
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "vp-test-code-btn";
+    btn.textContent = "填入测试码";
+    btn.setAttribute("aria-label", "填入测试投票码（须与云端 VOTE_TEST_CODE 一致）");
+    btn.addEventListener("click", () => {
+      if (codeInput) {
+        codeInput.value = testCodeRaw.toUpperCase();
+        codeInput.dispatchEvent(new Event("input", { bubbles: true }));
+        syncSubmitEnabled();
+      }
+    });
+    codeWrap.appendChild(btn);
+    const note = document.createElement("p");
+    note.className = "vp-test-code-note";
+    note.textContent =
+      "测试码不消耗真实票；请与 Firebase 环境参数 VOTE_TEST_CODE 一致。正式现场请清空 testVoteCode。";
+    codeWrap.appendChild(note);
+  }
+
   if (round1Pk) {
     document.getElementById("vp-root")?.classList.add("vp-root--pk");
     gridEl.classList.add("vp-grid--pk1v1");

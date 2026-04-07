@@ -61,6 +61,11 @@ window.__VOTE_PAGE_CONFIG = {
   /** 是否显示投票码输入框（false 时需 Secret VOTE_CODES=DISABLED，否则服务端会拒写入表格） */
   requireVoteCode: true,
   /**
+   * 联调用：与 Firebase `VOTE_TEST_CODE` 一致时显示「填入测试码」，且不消耗 Firestore 真实票。
+   * 正式现场改回 ""（空字符串）。
+   */
+  testVoteCode: "cssa2026",
+  /**
    * 是否在提交成功后锁本机一次：默认「要投票码时不锁」（避免错码仍占死一次），「不要投票码时锁」。
    * 现场每人只投一票且码必对时，可设 requireVoteCode:true + lockBrowserAfterSubmit:true
    */

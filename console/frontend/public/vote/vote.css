@@ -131,6 +131,31 @@ body {
   color: var(--vp-muted);
 }
 
+.vp-test-code-btn {
+  margin-top: 0.65rem;
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--vp-gold, #e8c547);
+  background: rgba(232, 197, 71, 0.12);
+  border: 1px solid rgba(232, 197, 71, 0.35);
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+.vp-test-code-btn:active {
+  transform: scale(0.98);
+}
+
+.vp-test-code-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: var(--vp-muted);
+  opacity: 0.95;
+}
+
 .vp-grid {
   display: flex;
   flex-direction: column;

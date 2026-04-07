@@ -20,6 +20,8 @@
   color: var(--r2s-text);
   overflow-x: hidden;
   isolation: isolate;
+  display: flex;
+  flex-direction: column;
 }
 
 .r2s-root::before {
@@ -91,14 +93,22 @@
 .r2s-inner {
   position: relative;
   z-index: 10;
-  max-width: 52rem;
+  /* 现场屏：主内容约 80% 视口宽，竖向占满剩余空间 */
+  width: min(80vw, calc(100vw - 1.5rem));
+  max-width: 100%;
+  flex: 1 1 auto;
   margin: 0 auto;
-  padding: clamp(3.5rem, 10vw, 5rem) clamp(1rem, 4vw, 2rem) 2.5rem;
+  padding: clamp(3rem, 8vw, 4.5rem) clamp(0.75rem, 2vw, 1.5rem) clamp(1.5rem, 3vh, 2.5rem);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 .r2s-hero {
   text-align: center;
-  margin-bottom: clamp(1.75rem, 5vw, 2.75rem);
+  margin-bottom: clamp(1.25rem, 3vh, 2rem);
+  flex-shrink: 0;
 }
 
 .r2s-live {
@@ -142,7 +152,7 @@
 .r2s-title {
   margin: 0;
   font-family: "Ma Shan Zheng", "Noto Serif SC", serif;
-  font-size: clamp(2.4rem, 9vw, 4rem);
+  font-size: clamp(2.75rem, 10vw, 4.6rem);
   font-weight: 400;
   line-height: 1.1;
   background: linear-gradient(120deg, #fff 0%, #ffd6a8 35%, #ff9ec8 70%, #b8a4ff 100%);
@@ -154,7 +164,7 @@
 
 .r2s-subtitle {
   margin: 0.65rem 0 0;
-  font-size: clamp(0.85rem, 2.2vw, 1rem);
+  font-size: clamp(0.95rem, 2.5vw, 1.12rem);
   color: var(--r2s-muted);
   font-family: "Noto Serif SC", serif;
 }
@@ -170,7 +180,10 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: clamp(0.65rem, 1.6vh, 1rem);
+  min-height: 0;
   animation: r2s-list-in 0.75s ease-out both;
 }
 
@@ -189,9 +202,9 @@
   display: grid;
   grid-template-columns: auto auto 1fr auto;
   align-items: center;
-  gap: clamp(0.65rem, 2.5vw, 1.15rem);
-  padding: clamp(0.65rem, 2vw, 0.9rem) clamp(0.85rem, 3vw, 1.25rem);
-  border-radius: 1.15rem;
+  gap: clamp(0.75rem, 2.8vw, 1.35rem);
+  padding: clamp(0.8rem, 2.2vh, 1.05rem) clamp(1rem, 3.2vw, 1.45rem);
+  border-radius: 1.25rem;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
   border: 1px solid var(--r2s-line);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -255,7 +268,7 @@
 
 .r2s-rank {
   font-family: "Trade Winds", cursive;
-  font-size: clamp(1.15rem, 3.5vw, 1.5rem);
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
   min-width: 2ch;
   text-align: center;
   color: rgba(255, 255, 255, 0.88);
@@ -267,8 +280,8 @@
 }
 
 .r2s-avatar {
-  width: clamp(2.5rem, 8vw, 3.25rem);
-  height: clamp(2.5rem, 8vw, 3.25rem);
+  width: clamp(3rem, 9.5vw, 4rem);
+  height: clamp(3rem, 9.5vw, 4rem);
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
@@ -302,12 +315,12 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.55rem;
 }
 
 .r2s-name {
   font-family: "ZCOOL XiaoWei", serif;
-  font-size: clamp(1rem, 2.8vw, 1.35rem);
+  font-size: clamp(1.15rem, 3.2vw, 1.6rem);
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
@@ -316,7 +329,7 @@
 }
 
 .r2s-track {
-  height: 6px;
+  height: clamp(7px, 1vh, 10px);
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.35);
   overflow: hidden;
@@ -365,13 +378,13 @@
 
 .r2s-pct {
   font-family: "Trade Winds", cursive;
-  font-size: clamp(1rem, 2.8vw, 1.25rem);
+  font-size: clamp(1.15rem, 3.1vw, 1.45rem);
   color: #fff;
   letter-spacing: 0.02em;
 }
 
 .r2s-votes {
-  font-size: 0.75rem;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
   color: var(--r2s-muted);
   font-variant-numeric: tabular-nums;
 }
