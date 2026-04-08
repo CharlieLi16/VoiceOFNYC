@@ -461,17 +461,13 @@ async function main() {
   });
 
   el("vh-publish")?.addEventListener("click", async () => {
-    const secret = el("vh-secret").value.trim();
-    if (!secret) {
-      showMsg("请填写发布密钥 STAFF_PUBLISH_SECRET", false);
-      return;
-    }
+    const secret = el("vh-secret")?.value.trim() ?? "";
     const rounds = buildPublishRoundsPayload();
     showMsg("发布中…", undefined);
     try {
       await publishVoteUi({
         eventId: cfg.eventId,
-        secret,
+        ...(secret ? { secret } : {}),
         rounds,
       });
       showMsg("已写入 Firestore（按环节 rounds）。请让观众刷新 vote 页。", true);

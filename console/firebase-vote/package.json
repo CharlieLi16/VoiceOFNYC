@@ -1,6 +1,9 @@
 {
   "name": "voiceofnyc-firebase-vote",
   "private": true,
+  "scripts": {
+    "deploy:functions": "npx firebase-tools@latest deploy --only functions"
+  },
   "devDependencies": {
     "firebase-tools": "^13.0.0"
   }

@@ -59,16 +59,16 @@
         </div>
         <div id="vh-rounds-editor"></div>
         <label class="vh-label" style="margin-top: 1rem">
-          <span>发布密钥（<code>STAFF_PUBLISH_SECRET</code>，与 Firebase Functions 一致）</span>
-          <input type="password" id="vh-secret" class="vh-input" autocomplete="off" />
+          <span>发布密钥（可选；仅当 Functions 参数 <code>STAFF_PUBLISH_SECRET</code> 非空时必填）</span>
+          <input type="password" id="vh-secret" class="vh-input" autocomplete="off" placeholder="未配置密钥可留空" />
         </label>
         <button type="button" class="vh-btn vh-btn--primary" id="vh-publish">发布全部环节到 Firestore</button>
         <div id="vh-msg"></div>
       </section>
 
       <p class="vh-foot">
-        部署：<code>firebase deploy --only firestore:rules,functions</code> 后设置 Secret
-        <code>STAFF_PUBLISH_SECRET</code>。详见 <code>console/docs/README-vote-firebase-static.md</code>。
+        部署：<code>firebase deploy --only firestore:rules,functions</code>。发布密钥为可选项（不设则调度页留空即可发布）。详见
+        <code>console/docs/README-vote-firebase-static.md</code>。
       </p>
     </div>
     <script src="./vote-config.js"></script>
