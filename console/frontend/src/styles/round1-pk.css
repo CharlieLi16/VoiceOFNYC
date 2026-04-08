@@ -1,13 +1,38 @@
 /* 对齐 score11.html：单组 PK 全屏双柱（嵌在 .stage-page-root 内） */
 
 .r1pk-wrap {
-  min-height: calc(100vh - 3rem);
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
-  padding: 0 0.5rem 1rem;
+  justify-content: flex-start;
+  padding: 0 0.5rem 0.35rem;
   font-family: Arial, sans-serif;
   text-align: center;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.r1pk-wrap > .r1pk-banner {
+  flex-shrink: 0;
+}
+
+.r1pk-wrap > .r1pk-header {
+  flex-shrink: 0;
+}
+
+.r1pk-wrap > .r1pk-pair-nav,
+.r1pk-wrap > p.stage-sub {
+  flex-shrink: 0;
+}
+
+.r1pk-wrap > p.stage-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.r1pk-wrap > p.stage-sub--clean {
+  font-size: 0.78rem;
 }
 
 .r1pk-wrap .r1pk-back {
@@ -82,9 +107,11 @@
   display: flex;
   justify-content: space-around;
   align-items: flex-end;
-  height: 40vh;
+  flex: 1 1 0;
+  min-height: 4.5rem;
+  height: 0;
   position: relative;
-  margin: 0 auto;
+  margin: 0.25rem auto 0;
   width: min(90vw, 720px);
   perspective: 3000px;
   transform-style: preserve-3d;
@@ -133,7 +160,8 @@
   display: flex;
   justify-content: space-around;
   width: min(90vw, 720px);
-  margin: 20px auto 0;
+  margin: 0.35rem auto 0;
+  flex-shrink: 0;
 }
 
 .r1pk-wrap .percentage-text {
@@ -169,7 +197,7 @@
   justify-content: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
 }
 
 .r1pk-wrap .r1pk-pair-nav--hidden {

@@ -15,10 +15,10 @@
   --r2s-glow: rgba(255, 120, 180, 0.12);
 
   box-sizing: border-box;
-  min-height: 100vh;
+  min-height: 0;
   position: relative;
   color: var(--r2s-text);
-  overflow-x: hidden;
+  overflow: hidden;
   isolation: isolate;
   display: flex;
   flex-direction: column;
@@ -98,7 +98,7 @@
   max-width: 100%;
   flex: 1 1 auto;
   margin: 0 auto;
-  padding: clamp(3rem, 8vw, 4.5rem) clamp(0.75rem, 2vw, 1.5rem) clamp(1.5rem, 3vh, 2.5rem);
+  padding: clamp(1.25rem, 3.5vw, 2.5rem) clamp(0.75rem, 2vw, 1.5rem) clamp(0.5rem, 1.5vh, 1rem);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -107,7 +107,7 @@
 
 .r2s-hero {
   text-align: center;
-  margin-bottom: clamp(1.25rem, 3vh, 2rem);
+  margin-bottom: clamp(0.5rem, 1.5vh, 1rem);
   flex-shrink: 0;
 }
 
@@ -182,8 +182,9 @@
   flex-direction: column;
   flex: 1 1 auto;
   justify-content: center;
-  gap: clamp(0.65rem, 1.6vh, 1rem);
+  gap: clamp(0.35rem, 1vh, 0.75rem);
   min-height: 0;
+  overflow: hidden;
   animation: r2s-list-in 0.75s ease-out both;
 }
 
@@ -202,8 +203,8 @@
   display: grid;
   grid-template-columns: auto auto 1fr auto;
   align-items: center;
-  gap: clamp(0.75rem, 2.8vw, 1.35rem);
-  padding: clamp(0.8rem, 2.2vh, 1.05rem) clamp(1rem, 3.2vw, 1.45rem);
+  gap: clamp(0.5rem, 1.8vw, 1rem);
+  padding: clamp(0.45rem, 1.2vh, 0.75rem) clamp(0.85rem, 2.5vw, 1.2rem);
   border-radius: 1.25rem;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
   border: 1px solid var(--r2s-line);

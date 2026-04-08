@@ -35,6 +35,15 @@ body {
   min-height: 100vh;
 }
 
+/* 舞台全屏路由：根节点不增高，避免 body 出现滚动条 */
+#root:has(.stage-page-root:has(> .r1pk-wrap)),
+#root:has(.stage-page-root:has(> .r2s-root)),
+#root:has(.stage-page-root:has(> .fr-root)) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
 .app-shell {
   min-height: 100vh;
   display: flex;

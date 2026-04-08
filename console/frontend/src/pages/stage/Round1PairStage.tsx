@@ -240,13 +240,13 @@ export default function Round1PairStage() {
         ))}
       </nav>
       {!cleanUi ? (
-        <p className="stage-sub" style={{ marginTop: "0.5rem", fontSize: "0.8rem" }}>
+        <p className="stage-sub">
           键盘 <kbd>1</kbd>–<kbd>5</kbd> 切换组别 · <kbd>R</kbd> 显示/隐藏下方「第 N 轮」条 · 读取{" "}
           <code>{cfg.round1AudienceRange}</code> 第 {pairNum} 条数据行（全表通常第 {pairNum + 1} 行，第 1 行为表头）· 柱高 =
           （观众左+评委左）:（观众右+评委右）· 头图/姓名 <code>GET /api/stage/round1-pairs</code>
         </p>
       ) : (
-        <p className="stage-sub stage-sub--clean" style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>
+        <p className="stage-sub stage-sub--clean">
           键盘 <kbd>1</kbd>–<kbd>5</kbd> 切换组别 · <kbd>R</kbd> 显示/隐藏下方轮次条
         </p>
       )}

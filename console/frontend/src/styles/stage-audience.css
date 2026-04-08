@@ -13,6 +13,29 @@
   box-sizing: border-box;
 }
 
+/* /stage/* React 大屏：固定一屏高度，避免整页出现纵向滚动条 */
+.stage-page-root:has(> .r1pk-wrap),
+.stage-page-root:has(> .r2s-root),
+.stage-page-root:has(> .fr-root) {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-attachment: scroll;
+}
+
+.stage-page-root:has(> .r1pk-wrap) > .r1pk-wrap,
+.stage-page-root:has(> .r2s-root) > .r2s-root,
+.stage-page-root:has(> .fr-root) > .fr-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .stage-page-root .stage-back {
   display: inline-flex;
   align-items: center;
