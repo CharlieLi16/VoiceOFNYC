@@ -1,0 +1,9 @@
+# Railway：Root Directory 必须设为 **console**，否则会只在仓库根看到 console/ 子目录，Railpack 无法判定语言。
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/state"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
