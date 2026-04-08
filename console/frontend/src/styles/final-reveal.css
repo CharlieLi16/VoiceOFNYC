@@ -20,6 +20,85 @@
   margin-bottom: 0;
 }
 
+/* 右上角：表格是否已就绪（避免首屏全 0 误公布） */
+.fr-status {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: clamp(0.68rem, 1.6vw, 0.82rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  user-select: none;
+}
+
+.fr-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fr-status--ready {
+  color: rgba(200, 255, 210, 0.95);
+  background: rgba(40, 120, 60, 0.35);
+  border-color: rgba(122, 229, 130, 0.45);
+}
+
+.fr-status--ready .fr-status-dot {
+  background: #7ae582;
+  box-shadow: 0 0 10px rgba(122, 229, 130, 0.85);
+}
+
+.fr-status--loading {
+  color: rgba(255, 230, 180, 0.95);
+  background: rgba(120, 90, 20, 0.35);
+  border-color: rgba(255, 193, 7, 0.4);
+}
+
+.fr-status--loading .fr-status-dot {
+  background: #ffc107;
+  box-shadow: 0 0 8px rgba(255, 193, 7, 0.65);
+  animation: fr-status-pulse 1.4s ease-in-out infinite;
+}
+
+.fr-status--error {
+  color: rgba(255, 200, 200, 0.98);
+  background: rgba(120, 40, 50, 0.4);
+  border-color: rgba(255, 120, 130, 0.45);
+}
+
+.fr-status--error .fr-status-dot {
+  background: #f47174;
+  box-shadow: 0 0 10px rgba(244, 113, 116, 0.65);
+}
+
+@keyframes fr-status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.88);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-status--loading .fr-status-dot {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
 .fr-title {
   color: #fff;
   font-family: "Trade Winds", cursive;
@@ -75,14 +154,63 @@
   flex: 0 1 auto;
 }
 
-.fr-avatar {
+/* 有图：加载前黑底；无 URL：纯黑圆（不用问号占位图） */
+.fr-avatar-wrap {
+  position: relative;
   width: min(150px, 16vmin);
   height: min(150px, 16vmin);
-  border-radius: 50%;
-  border: 3px solid #ccc;
   margin: 0 auto clamp(6px, 1vmin, 12px);
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.32);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.fr-avatar.fr-avatar--empty:not(.fr-avatar--under) {
+  display: block;
+  width: min(150px, 16vmin);
+  height: min(150px, 16vmin);
+  margin: 0 auto clamp(6px, 1vmin, 12px);
+  border: 3px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+  background: #000;
+  box-sizing: border-box;
+}
+
+.fr-avatar.fr-avatar--empty.fr-avatar--under {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  width: auto;
+  height: auto;
+  border: none;
+  border-radius: 50%;
+  background: #000;
+}
+
+.fr-avatar.fr-avatar--photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
   object-fit: cover;
   display: block;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+  box-sizing: border-box;
+}
+
+.fr-avatar.fr-avatar--photo.fr-avatar--loaded {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-avatar.fr-avatar--photo {
+    transition: none;
+  }
 }
 
 .fr-breakdown {

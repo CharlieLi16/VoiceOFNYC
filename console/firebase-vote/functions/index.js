@@ -183,7 +183,23 @@ function validateOptionalRoundBlock(roundId, block) {
       `${rid} 须恰好 2 名选手（第 1 位左侧 / 第 2 位右侧）。`
     );
   }
+  if (/^final_perf_[1-6]$/.test(rid) && arr.length !== 1) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${rid} 须恰好 1 名选手（决赛每唱一人）。`
+    );
+  }
   const candidates = validateCandidatesForPublish(arr);
+  if (/^final_perf_[1-6]$/.test(rid)) {
+    const m = /^final_perf_([1-6])$/.exec(rid);
+    const wantRow = parseInt(m[1], 10) + 1;
+    if (candidates[0].sheetRow !== wantRow) {
+      throw new HttpsError(
+        "invalid-argument",
+        `${rid} 的选手表行必须为 ${wantRow}（与 vote 页 final_perf 规则一致）。`
+      );
+    }
+  }
   return {
     candidates,
     pageTitle: pageTitle || null,
@@ -251,7 +267,7 @@ async function tryConsumeTicket(eventId, rawCode, voteId, roundId) {
         throw new Error("already_used_round");
       }
       if (data.used === true && Object.keys(usedRounds).length === 0) {
-        throw new Error("already_used_legacy");
+        throw new Error("already_used_legacy"); 
       }
       const nextRounds = { ...usedRounds, [rid]: true };
       t.update(ref, {

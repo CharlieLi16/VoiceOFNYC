@@ -265,6 +265,11 @@ code.vh-round-summary-id {
   margin: 0.65rem 0 0.5rem;
 }
 
+.vh-round-toolbar .vh-round-hint {
+  margin: 0 0 0.35rem;
+  max-width: 42rem;
+}
+
 .vh-cand-host {
   margin: 0.5rem 0;
 }

@@ -49,7 +49,7 @@ window.__VOTE_PAGE_CONFIG = {
    * 初赛仅作兜底（无 round1PkByRoundId 条目时）；有映射时以 round1PkByRoundId 为准。
    */
   candidates: [
-    { id: "s1", sheetRow: 2, label: "选手 1", img: "/img/contestants/1.jpg" },
+    { id: "s1", sheetRow: 2, label: "Siwe", img: "/img/contestants/1.jpg" },
     { id: "s2", sheetRow: 3, label: "选手 2", img: "/img/contestants/2.jpg" },
     { id: "s3", sheetRow: 4, label: "选手 3", img: "/img/contestants/3.jpg" },
     { id: "s4", sheetRow: 5, label: "选手 4", img: "/img/contestants/4.jpg" },

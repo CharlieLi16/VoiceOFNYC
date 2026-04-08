@@ -47,13 +47,12 @@
       </section>
 
       <section class="vh-section">
-        <h2>按环节编辑（与 vote-config 字段一致）</h2>
+        <h2>按环节编辑 → 发布到 Firestore</h2>
         <p class="vh-muted">
-          结构与 <code>vote-config.js</code> 相同：<strong>初赛</strong>用 <code>round1PkByRoundId</code> 式两人（左/右），<strong>复活 / 决赛</strong>用 <code>candidates</code> 式列表。默认从 vote-config 载入；展开某一环节改标题、副标题与选手后<strong>一次发布</strong>写入 Firestore
-          <code>voteUi.rounds.{roundId}</code>。观众 <code>vote.html?roundId=…</code> 只读当前环节块。
+          观众端以 <code>events/…/site/voteUi</code> 已发布数据为准（与主控制台思路一致：<strong>无单独「上传服务器」</strong>，填好后用下方密钥<strong>发布全部环节</strong>）。字段与 <code>vote-config.js</code> 相同；<strong>初赛</strong>两人、<strong>复活</strong>至多 6 人、<strong>决赛每唱仅 1 人</strong>且表行与 <code>final_perf_n</code> 绑定（第 n 唱 → 第 n+1 行）。
         </p>
         <p class="vh-muted" style="margin-top: 0.35rem">
-          <strong>初赛</strong>每环节须 <strong>2 人</strong>；<strong>其它环节</strong> 1～6 人。发布时 Cloud Function 校验 <code>s1</code>～<code>s10</code>、行号等。若某环节留空选手，观众端该轮会回退到 vote-config（初赛五组仍优先 <code>round1PkByRoundId</code>）。
+          首次打开会从 vote-config 预填；「全部环节 ← vote-config」可整体重置。<strong>决赛各唱</strong>不提供单环节从配置文件重置按钮，请直接改显示名/头像路径后发布。若某环节未发布选手，观众端该轮会回退到 vote-config。
         </p>
         <div class="vh-round-actions-bar">
           <button type="button" class="vh-btn" id="vh-reset-all-config">全部环节 ← vote-config.js</button>

@@ -99,6 +99,18 @@ function normalizeCfgCandidate(c) {
   };
 }
 
+/** 与 vote-app.js final_perf_n → 表行 n+1 一致 */
+function isFinalPerfRound(roundId) {
+  return /^final_perf_[1-6]$/.test(roundId);
+}
+
+function finalPerfSheetRowFromRoundId(roundId) {
+  const m = /^final_perf_([1-6])$/.exec(roundId);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return Number.isInteger(n) && n >= 1 && n <= 6 ? n + 1 : null;
+}
+
 function defaultCandidate(existing) {
   const used = new Set((existing || []).map((c) => c.id));
   const id = IDS.find((x) => !used) || "s1";
@@ -107,8 +119,30 @@ function defaultCandidate(existing) {
   return { id, sheetRow, label: "", img: "/img/contestants/1.jpg" };
 }
 
+/** 决赛某唱：固定表行，从 vote-config.candidates 取同行人，否则空表单项行占位 */
+function defaultFinalPerfCandidateFromConfig(roundId) {
+  const wantRow = finalPerfSheetRowFromRoundId(roundId);
+  if (wantRow == null) return [defaultCandidate([])];
+  const base = Array.isArray(cfg.candidates) ? cfg.candidates.map(normalizeCfgCandidate) : [];
+  const hit = base.find((c) => Number(c.sheetRow) === wantRow);
+  if (hit) {
+    return [{ ...hit, sheetRow: wantRow }];
+  }
+  const id = IDS[wantRow - 2] || "s1";
+  return [
+    {
+      id,
+      sheetRow: wantRow,
+      label: "",
+      img: `/img/contestants/${wantRow - 1}.jpg`,
+    },
+  ];
+}
+
 function maxCandidatesForRound(roundId) {
-  return /^round1_pk_[1-5]$/.test(roundId) ? 2 : 6;
+  if (/^round1_pk_[1-5]$/.test(roundId)) return 2;
+  if (isFinalPerfRound(roundId)) return 1;
+  return 6;
 }
 
 function resetSingleRoundFromConfig(roundId) {
@@ -122,6 +156,8 @@ function resetSingleRoundFromConfig(roundId) {
       const left = defaultCandidate([]);
       candidates = [left, defaultCandidate([left])];
     }
+  } else if (isFinalPerfRound(roundId)) {
+    candidates = defaultFinalPerfCandidateFromConfig(roundId);
   } else {
     const base = Array.isArray(cfg.candidates) ? cfg.candidates.map(normalizeCfgCandidate) : [];
     candidates = base.length ? base : [defaultCandidate([])];
@@ -149,7 +185,16 @@ function applyFirestoreVoteUi(d) {
       if (typeof b.pageTitle === "string") roundState[r.id].pageTitle = b.pageTitle;
       if (typeof b.subtitle === "string") roundState[r.id].subtitle = b.subtitle;
       if (Array.isArray(b.candidates) && b.candidates.length) {
-        roundState[r.id].candidates = b.candidates.map((c) => normalizeCfgCandidate(c));
+        let cands = b.candidates.map((c) => normalizeCfgCandidate(c));
+        if (isFinalPerfRound(r.id)) {
+          const wr = finalPerfSheetRowFromRoundId(r.id);
+          const pick = wr != null ? cands.find((c) => Number(c.sheetRow) === wr) : null;
+          const one = pick || cands[0];
+          cands = one
+            ? [{ ...one, sheetRow: wr != null ? wr : Number(one.sheetRow) || 2 }]
+            : defaultFinalPerfCandidateFromConfig(r.id);
+        }
+        roundState[r.id].candidates = cands;
       }
     }
     return;
@@ -158,6 +203,21 @@ function applyFirestoreVoteUi(d) {
     const mapped = d.candidates.map((c) => normalizeCfgCandidate(c));
     for (const r of ROUND_ROWS) {
       if (/^round1_pk_/.test(r.id)) continue;
+      if (isFinalPerfRound(r.id)) {
+        const wantRow = finalPerfSheetRowFromRoundId(r.id);
+        const one =
+          wantRow != null
+            ? mapped.find((c) => Number(c.sheetRow) === wantRow) || mapped[0]
+            : mapped[0];
+        roundState[r.id] = {
+          pageTitle: typeof d.pageTitle === "string" ? d.pageTitle : "",
+          subtitle: typeof d.subtitle === "string" ? d.subtitle : "",
+          candidates: one
+            ? [{ ...one, sheetRow: wantRow != null ? wantRow : Number(one.sheetRow) || 2 }]
+            : defaultFinalPerfCandidateFromConfig(r.id),
+        };
+        continue;
+      }
       roundState[r.id] = {
         pageTitle: typeof d.pageTitle === "string" ? d.pageTitle : "",
         subtitle: typeof d.subtitle === "string" ? d.subtitle : "",
@@ -170,22 +230,33 @@ function applyFirestoreVoteUi(d) {
 function renderCandidateRows(roundId, host) {
   if (!host) return;
   host.replaceChildren();
+  const wantFinalRow = isFinalPerfRound(roundId) ? finalPerfSheetRowFromRoundId(roundId) : null;
+  if (wantFinalRow != null && roundState[roundId]?.candidates?.length === 1) {
+    roundState[roundId].candidates[0].sheetRow = wantFinalRow;
+  }
   const list = roundState[roundId]?.candidates || [];
   const maxC = maxCandidatesForRound(roundId);
+  const lockSheetRow = wantFinalRow != null;
 
   list.forEach((c, idx) => {
     const row = document.createElement("div");
     row.className = "vh-cand-row";
+    const removeBtn =
+      lockSheetRow && list.length <= 1
+        ? ""
+        : `<button type="button" class="vh-btn vh-btn--danger vh-cand-remove" data-round="${roundId}" data-i="${idx}">删</button>`;
     row.innerHTML = `
       <label>ID<br /><select class="vh-cand-id" data-round="${roundId}" data-i="${idx}">${IDS.map(
         (id) => `<option value="${id}" ${id === c.id ? "selected" : ""}>${id}</option>`
       ).join("")}</select></label>
-      <label>表行<br /><select class="vh-cand-rown" data-round="${roundId}" data-i="${idx}">${ROWS.map(
-        (n) => `<option value="${n}" ${n === c.sheetRow ? "selected" : ""}>${n}</option>`
-      ).join("")}</select></label>
+      <label>表行${lockSheetRow ? "（本唱固定）" : ""}<br /><select class="vh-cand-rown" data-round="${roundId}" data-i="${idx}"${
+      lockSheetRow ? " disabled" : ""
+    }>${ROWS.map((n) => `<option value="${n}" ${n === c.sheetRow ? "selected" : ""}>${n}</option>`).join(
+      ""
+    )}</select></label>
       <label>显示名<br /><input class="vh-cand-label" data-round="${roundId}" data-i="${idx}" value="${escapeAttr(c.label)}" /></label>
       <label>图片路径<br /><input class="vh-cand-img" data-round="${roundId}" data-i="${idx}" value="${escapeAttr(c.img)}" /></label>
-      <button type="button" class="vh-btn vh-btn--danger vh-cand-remove" data-round="${roundId}" data-i="${idx}">删</button>
+      ${removeBtn}
     `;
     host.appendChild(row);
   });
@@ -248,22 +319,30 @@ function renderRoundEditors() {
 
     const toolbar = document.createElement("div");
     toolbar.className = "vh-round-toolbar";
-    const btnCfg = document.createElement("button");
-    btnCfg.type = "button";
-    btnCfg.className = "vh-btn";
-    btnCfg.textContent = "本环节 ← vote-config.js";
-    btnCfg.addEventListener("click", () => {
-      resetSingleRoundFromConfig(r.id);
-      const pt = el(`vh-pt-${idx}`);
-      const st = el(`vh-st-${idx}`);
-      if (pt) pt.value = "";
-      if (st) st.value = "";
-      roundState[r.id].pageTitle = "";
-      roundState[r.id].subtitle = "";
-      renderCandidateRows(r.id, el(`vh-cands-${idx}`));
-      showMsg(`已用 vote-config 重置：${r.label}`, true);
-    });
-    toolbar.appendChild(btnCfg);
+    if (!isFinalPerfRound(r.id)) {
+      const btnCfg = document.createElement("button");
+      btnCfg.type = "button";
+      btnCfg.className = "vh-btn";
+      btnCfg.textContent = "本环节 ← vote-config.js";
+      btnCfg.addEventListener("click", () => {
+        resetSingleRoundFromConfig(r.id);
+        const pt = el(`vh-pt-${idx}`);
+        const st = el(`vh-st-${idx}`);
+        if (pt) pt.value = "";
+        if (st) st.value = "";
+        roundState[r.id].pageTitle = "";
+        roundState[r.id].subtitle = "";
+        renderCandidateRows(r.id, el(`vh-cands-${idx}`));
+        showMsg(`已用 vote-config 重置：${r.label}`, true);
+      });
+      toolbar.appendChild(btnCfg);
+    } else {
+      const hint = document.createElement("p");
+      hint.className = "vh-muted vh-round-hint";
+      hint.textContent =
+        "该唱仅 1 人；表行已与 roundId 绑定（第 n 唱 → 第 n+1 行）。编辑后请使用下方「发布到 Firestore」，观众端以已发布数据为准。";
+      toolbar.appendChild(hint);
+    }
     body.appendChild(toolbar);
 
     const st = roundState[r.id] || { pageTitle: "", subtitle: "", candidates: [] };
@@ -302,6 +381,9 @@ function renderRoundEditors() {
     addBtn.className = "vh-btn";
     addBtn.textContent = "+ 添加选手";
     const maxC = maxCandidatesForRound(r.id);
+    if (isFinalPerfRound(r.id)) {
+      addBtn.style.display = "none";
+    }
     addBtn.addEventListener("click", () => {
       if (roundState[r.id].candidates.length >= maxC) {
         showMsg(`${r.label} 最多 ${maxC} 人`, false);

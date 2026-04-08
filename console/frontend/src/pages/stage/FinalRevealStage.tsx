@@ -16,7 +16,6 @@ import { useSheetRangePoll } from "@/hooks/useSheetRangePoll";
 import "@/styles/final-reveal.css";
 
 const MAX_ROWS = 6;
-const PLACEHOLDER_IMG = "/img/questionMark.png";
 const EMPTY_LINEUP: Round2LineupSlot[] = Array.from({ length: 6 }, () => ({ name: "", img: "" }));
 
 function isRound2SheetPlaceholderName(raw: string): boolean {
@@ -145,7 +144,7 @@ function buildSlots(
     const fromImg = nameFromContestantImg(meta.img);
     const displayName =
       sheetName || meta.name.trim() || fromImg || `选手 ${slotNum}`;
-    const img = meta.img.trim() ? meta.img : PLACEHOLDER_IMG;
+    const img = meta.img.trim() ? meta.img : "";
     const hasBreakdown = (r?.length ?? 0) >= 5;
     const audienceAvg = parseFloatCell(r?.[1]);
     const judgeAvg = hasBreakdown ? round3JudgeAvgFromRow(r) : 0;
@@ -169,6 +168,31 @@ function medalClass(m: "gold" | "silver" | "bronze" | null): string {
   return "";
 }
 
+/** 无 URL 或图片尚未加载完成时显示纯黑圆（不用问号图） */
+function FinalRevealAvatar({ src }: { src: string }) {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    setLoaded(false);
+  }, [src]);
+
+  if (!src) {
+    return <div className="fr-avatar fr-avatar--empty" aria-hidden />;
+  }
+
+  return (
+    <div className="fr-avatar-wrap">
+      <div className="fr-avatar fr-avatar--empty fr-avatar--under" aria-hidden />
+      <img
+        src={src}
+        alt=""
+        className={`fr-avatar fr-avatar--photo${loaded ? " fr-avatar--loaded" : ""}`}
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
+      />
+    </div>
+  );
+}
+
 const DEFAULT_WEIGHTS = { judge: 0.6, audience: 0.4 };
 
 export default function FinalRevealStage() {
@@ -179,7 +203,7 @@ export default function FinalRevealStage() {
   const judgeW = frCfg?.judgeWeight ?? DEFAULT_WEIGHTS.judge;
   const audienceW = frCfg?.audienceWeight ?? DEFAULT_WEIGHTS.audience;
   const cleanUi = useStageCleanUi();
-  const { rows, error } = useSheetRangePoll(range);
+  const { rows, error, sheetDataReady } = useSheetRangePoll(range);
 
   const [lineupApi, setLineupApi] = useState<Round2LineupSlot[] | null>(null);
   const [revealedCount, setRevealedCount] = useState(0);
@@ -287,11 +311,28 @@ export default function FinalRevealStage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onKeyDown]);
 
+  const statusTone = error ? "error" : sheetDataReady ? "ready" : "loading";
+  const statusLabel = error ? "数据异常" : sheetDataReady ? "可公布" : "同步中…";
+  const statusDetail = error
+    ? String(error)
+    : sheetDataReady
+      ? "表格已至少成功同步一次，分数可信后再按空格揭晓"
+      : "正在首次读取 Google 表，请勿在同步完成前公布分数";
+
   return (
     <div className="fr-root">
       <Link className="stage-back fr-back" to="/">
         ← 返回控制台
       </Link>
+      <div
+        className={`fr-status fr-status--${statusTone}`}
+        role="status"
+        aria-live="polite"
+        title={statusDetail}
+      >
+        <span className="fr-status-dot" aria-hidden />
+        <span className="fr-status-text">{statusLabel}</span>
+      </div>
       <h1 className="fr-title">Final Round</h1>
       <p className="fr-sub">
         {cleanUi ? (
@@ -331,7 +372,7 @@ export default function FinalRevealStage() {
               className={`fr-contestant${medalClass(m)}`}
               role="listitem"
             >
-              <img className="fr-avatar" src={s.img} alt="" />
+              <FinalRevealAvatar src={s.img} />
               <div className="fr-name">{s.name}</div>
               <div className="fr-score">{scoreText}</div>
               {breakdown && <div className="fr-breakdown">{breakdown}</div>}
