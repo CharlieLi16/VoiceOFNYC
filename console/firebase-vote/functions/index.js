@@ -15,11 +15,16 @@ const crypto = require("crypto");
 
 const voteIngestUrl = defineSecret("VOTE_INGEST_URL");
 const voteCodesSecret = defineSecret("VOTE_CODES");
-/** 非空则 Callable 须传 data.secret 且一致；留空则不校验发布（勿公开 index.html 链接） */
+/**
+ * 发布校验：默认不校验。
+ * - 留空 / 未配置：不校验。
+ * - 设为 DISABLED（大小写不敏感）：不校验（用于显式关闭，或覆盖环境里残留的旧值）。
+ * - 其它非空字符串：须与 Callable data.secret 完全一致。
+ */
 const staffPublishSecret = defineString("STAFF_PUBLISH_SECRET", {
   default: "",
   description:
-    "可选。不设或空 = 无需密钥即可 publishVoteUi；设为非空则与调度页输入一致",
+    "空或 DISABLED = 不校验 publishVoteUi；其它非空则须与调度页密钥一致",
 });
 const voteIngestSecret = defineString("VOTE_INGEST_SECRET", {
   default: "",
@@ -511,13 +516,15 @@ exports.publishVoteUi = onCall(
   async (request) => {
     const data = request.data || {};
     const eventId = String(data.eventId || "").trim();
-    const expected = (staffPublishSecret.value() || "").trim();
+    const expectedRaw = (staffPublishSecret.value() || "").trim();
+    const publishAuthOff =
+      !expectedRaw || expectedRaw.toUpperCase() === "DISABLED";
     if (eventId !== "voiceofnyc-revival") {
       throw new HttpsError("invalid-argument", "不支持的活动。");
     }
-    if (expected) {
+    if (!publishAuthOff) {
       const secret = String(data.secret || "").trim();
-      if (secret !== expected) {
+      if (secret !== expectedRaw) {
         throw new HttpsError("permission-denied", "发布密钥无效。");
       }
     }

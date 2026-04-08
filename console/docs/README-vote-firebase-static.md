@@ -17,7 +17,7 @@
   - **推荐（v2）**：`voteUiVersion: 2`，`rounds`：`{ [roundId]: { candidates, pageTitle?, subtitle? } }`，与 `vote-config.js` 中「每轮一份」的语义一致；另保留顶层 `candidates` / `pageTitle` / `subtitle` 作为复活等环节的**镜像**，供旧逻辑或未填某轮时的兜底。  
   - **旧版**：仅顶层 `candidates`、`pageTitle`、`subtitle`（全场共用一份选手列表）。  
 - **规则**：[`firebase-vote/firestore.rules`](../firebase-vote/firestore.rules) 允许该文档 **公开读**、**禁止客户端写**；写入仅通过 Cloud Function。  
-- **发布**：在 **`index.html`** 按环节折叠编辑后点「发布全部环节」。**`STAFF_PUBLISH_SECRET` 为可选**：不设（默认空）则调度页密钥框**留空**即可发布；若要在 Functions 参数里设非空字符串，则调度页须填同一串（参数通过 `firebase deploy` 时环境变量或控制台配置，见 Functions 文档）。仍支持 Callable 仅传顶层 `candidates` 的**旧版发布**（不写 `rounds`）。
+- **发布**：在 **`index.html`** 按环节折叠编辑后点「发布全部环节」。**`STAFF_PUBLISH_SECRET` 为可选**：默认不校验，调度页密钥可留空。若仍提示「发布密钥无效」，说明云端该参数**非空**（常见于 `functions/.env` 里残留）：删掉该变量、或设为 **`DISABLED`** 后重新 `deploy functions`。若设为其它的非空字符串，则调度页须填同一串。仍支持 Callable 仅传顶层 `candidates` 的**旧版发布**（不写 `rounds`）。
 
 ```bash
 cd console/firebase-vote

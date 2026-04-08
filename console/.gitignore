@@ -16,6 +16,7 @@ firebase-vote/firebase-debug.log
 # Firebase Functions 本地参数（含 VOTE_INGEST_SECRET，勿提交）
 firebase-vote/functions/.env
 firebase-vote/functions/.env.*
+!firebase-vote/functions/.env.example
 firebase-vote/scripts/node_modules/
 # 投票码导出（勿提交仓库）
 firebase-vote/data/*.csv
