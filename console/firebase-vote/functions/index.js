@@ -17,11 +17,14 @@ const voteIngestUrl = defineSecret("VOTE_INGEST_URL");
 const voteCodesSecret = defineSecret("VOTE_CODES");
 /**
  * 发布校验：默认不校验。
+ * 参数名故意不用 STAFF_PUBLISH_SECRET：GCP Secret Manager 里若仍有同名 Secret，
+ * Cloud Run 会注入该 env，会与 defineString 同名冲突，导致「没设密钥仍一直校验」。
+ *
  * - 留空 / 未配置：不校验。
- * - 设为 DISABLED（大小写不敏感）：不校验（用于显式关闭，或覆盖环境里残留的旧值）。
- * - 其它非空字符串：须与 Callable data.secret 完全一致。
+ * - DISABLED（大小写不敏感）：不校验。
+ * - 其它非空：须与 Callable data.secret 完全一致。
  */
-const staffPublishSecret = defineString("STAFF_PUBLISH_SECRET", {
+const voteUiPublishSecret = defineString("VOTE_UI_PUBLISH_SECRET", {
   default: "",
   description:
     "空或 DISABLED = 不校验 publishVoteUi；其它非空则须与调度页密钥一致",
@@ -516,7 +519,7 @@ exports.publishVoteUi = onCall(
   async (request) => {
     const data = request.data || {};
     const eventId = String(data.eventId || "").trim();
-    const expectedRaw = (staffPublishSecret.value() || "").trim();
+    const expectedRaw = (voteUiPublishSecret.value() || "").trim();
     const publishAuthOff =
       !expectedRaw || expectedRaw.toUpperCase() === "DISABLED";
     if (eventId !== "voiceofnyc-revival") {

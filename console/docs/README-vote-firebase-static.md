@@ -17,14 +17,14 @@
   - **推荐（v2）**：`voteUiVersion: 2`，`rounds`：`{ [roundId]: { candidates, pageTitle?, subtitle? } }`，与 `vote-config.js` 中「每轮一份」的语义一致；另保留顶层 `candidates` / `pageTitle` / `subtitle` 作为复活等环节的**镜像**，供旧逻辑或未填某轮时的兜底。  
   - **旧版**：仅顶层 `candidates`、`pageTitle`、`subtitle`（全场共用一份选手列表）。  
 - **规则**：[`firebase-vote/firestore.rules`](../firebase-vote/firestore.rules) 允许该文档 **公开读**、**禁止客户端写**；写入仅通过 Cloud Function。  
-- **发布**：在 **`index.html`** 按环节折叠编辑后点「发布全部环节」。**`STAFF_PUBLISH_SECRET` 为可选**：默认不校验，调度页密钥可留空。若仍提示「发布密钥无效」，说明云端该参数**非空**（常见于 `functions/.env` 里残留）：删掉该变量、或设为 **`DISABLED`** 后重新 `deploy functions`。若设为其它的非空字符串，则调度页须填同一串。仍支持 Callable 仅传顶层 `candidates` 的**旧版发布**（不写 `rounds`）。
+- **发布**：在 **`index.html`** 按环节折叠编辑后点「发布全部环节」。**`VOTE_UI_PUBLISH_SECRET` 为可选**（在 `functions/.env` 或 deploy 参数里配置）：默认不校验，调度页密钥可留空。若曾用 Secret Manager 配置过 **`STAFF_PUBLISH_SECRET`**，Cloud Run 会继续注入该 Secret，旧版若与参数同名会误触发校验；当前代码已改用 **`VOTE_UI_PUBLISH_SECRET`** 避免与 GCP Secret 同名冲突。仍支持 Callable 仅传顶层 `candidates` 的**旧版发布**（不写 `rounds`）。
 
 ```bash
 cd console/firebase-vote
 npx firebase-tools@latest deploy --only functions,firestore:rules
 ```
 
-**安全**：无密钥时任何拿到 **`index.html` 链接**的人均可调用 `publishVoteUi` 改 `voteUi`；勿向观众展示该页。若曾用 Secret Manager 配置过旧版 `STAFF_PUBLISH_SECRET`，可忽略或删除，当前逻辑以 **String 参数** `STAFF_PUBLISH_SECRET`（可空）为准。
+**安全**：无密钥时任何拿到 **`index.html` 链接**的人均可调用 `publishVoteUi` 改 `voteUi`；勿向观众展示该页。GCP 里遗留的 Secret **`STAFF_PUBLISH_SECRET`** 可在 Secret Manager 中删除（若已无其它用途），以免与历史 Cloud Run 配置混淆。
 
 ## 票码与轮次（`VOTE_CODES=__TICKETS__`）
 
@@ -90,7 +90,7 @@ localStorage 按 **`eventId` + 实际 roundId** 区分环节。
 
 1. **Google 表**：运行 **`setupVoiceOfNYCConsoleSheets`**，使 `Round3Audience` 含 **H/I** 列与 **B** 均分公式（见 `README-audience-vote.md`）。
 2. 部署 / 更新 **`vote-ingest.gs`** Web App（含 **`addRound3AudienceScore`**）。
-3. `firestore:rules` + `functions`（含 **`submitVote`** 决赛校验 **`audienceScore`**、**`publishVoteUi`**、**`STAFF_PUBLISH_SECRET`**）。
+3. `firestore:rules` + `functions`（含 **`submitVote`** 决赛校验 **`audienceScore`**、**`publishVoteUi`**、可选 **`VOTE_UI_PUBLISH_SECRET`**）。
 4. 发布前端 **`dist`**（含 **`vote/index.html`**、**`vote/vote.html`**）。
 
 ## 旧数据（仅 `used: true`、无 `usedRounds`）

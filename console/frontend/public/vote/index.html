@@ -59,7 +59,7 @@
         </div>
         <div id="vh-rounds-editor"></div>
         <label class="vh-label" style="margin-top: 1rem">
-          <span>发布密钥（可选；云端该参数非空时须一致。不想用密钥请在 deploy 用的 <code>functions/.env</code> 里设 <code>STAFF_PUBLISH_SECRET=DISABLED</code> 或删去该项）</span>
+          <span>发布密钥（可选；云端 <code>VOTE_UI_PUBLISH_SECRET</code> 非空时须一致。不用密钥则 deploy 的 <code>functions/.env</code> 不要配置该项，或设为 <code>DISABLED</code>）</span>
           <input type="password" id="vh-secret" class="vh-input" autocomplete="off" placeholder="未配置密钥可留空" />
         </label>
         <button type="button" class="vh-btn vh-btn--primary" id="vh-publish">发布全部环节到 Firestore</button>
