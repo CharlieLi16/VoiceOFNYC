@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { importContestants } from "@/api/client";
+import { fetchState, importContestants } from "@/api/client";
 import type { Contestant } from "@/api/types";
 
 const SEED_URL = "/data/seed-contestants.json";
@@ -55,6 +55,30 @@ export default function ContestantSeedEditor() {
       const data = (await r.json()) as unknown;
       setRows(parseImportedList(data));
       setMsg({ ok: true, text: "已从内置种子加载，可直接修改后导出。" });
+    } catch (e) {
+      setLoadErr(String(e));
+    }
+  }, []);
+
+  const loadFromServer = useCallback(async () => {
+    setLoadErr(null);
+    setMsg(null);
+    try {
+      const state = await fetchState();
+      const list = state.contestants ?? [];
+      if (list.length === 0) {
+        setRows([]);
+        setMsg({
+          ok: true,
+          text: "服务器上暂无选手数据（SQLite 为空）。可先用内置种子或 JSON 文件载入，再提交到服务器。",
+        });
+        return;
+      }
+      setRows(list.map((c) => ({ ...c })));
+      setMsg({
+        ok: true,
+        text: `已从服务器 SQLite 载入 ${list.length} 人（与 /display、控分后台一致）。`,
+      });
     } catch (e) {
       setLoadErr(String(e));
     }
@@ -134,6 +158,9 @@ export default function ContestantSeedEditor() {
           <button type="button" className="btn subtle" onClick={() => void loadFromSeed()}>
             重新加载内置种子
           </button>
+          <button type="button" className="btn subtle" onClick={() => void loadFromServer()}>
+            从服务器载入
+          </button>
           <label className="btn subtle file-btn">
             从 JSON 文件载入
             <input
@@ -160,8 +187,9 @@ export default function ContestantSeedEditor() {
       </header>
 
       <p className="admin-hint subtle">
-        在此修改姓名、头像路径、曲目与分数字段（字符串，与 <code>seed-contestants.json</code> 一致），点<strong>导出 JSON</strong>即可下载；需要更新 SQLite 时点<strong>提交到服务器</strong>（须启动后端 + <code>npm run dev</code> 或配置{" "}
-        <code>VITE_API_BASE</code>）。
+        <strong>从服务器载入</strong>会读取当前 SQLite 里选手（与控分后台、大屏一致）；<strong>重新加载内置种子</strong>来自{" "}
+        <code>public/data/seed-contestants.json</code>。修改后点<strong>导出 JSON</strong>下载，或<strong>提交到服务器</strong>写回
+        SQLite（须启动后端 + <code>npm run dev</code> 或配置 <code>VITE_API_BASE</code>）。
       </p>
 
       {loadErr && <div className="banner error">{loadErr}</div>}
