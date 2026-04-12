@@ -15,14 +15,20 @@ function apiUrl(path: string): string {
 
 async function readError(res: Response): Promise<string> {
   const t = await res.text();
-  if (!t) return `HTTP ${res.status}`;
+  const prefix = `[HTTP ${res.status}] `;
+  if (!t) return `${prefix}${res.statusText || "无响应体"}`.trim();
   try {
     const j = JSON.parse(t) as { detail?: unknown };
-    if (j.detail != null) return typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
+    if (j.detail != null) {
+      const body =
+        typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
+      return `${prefix}${body}`;
+    }
   } catch {
     /* not JSON */
   }
-  return t.length > 200 ? `${t.slice(0, 200)}…` : t;
+  const raw = t.length > 500 ? `${t.slice(0, 500)}…` : t;
+  return `${prefix}${raw}`;
 }
 
 export type CheckinResponse = {
