@@ -96,6 +96,9 @@ export default function Home() {
           <a className="cta cta-ghost" href="/vote/vote.html">
             观众投票页 vote.html
           </a>
+          <Link className="cta cta-ghost" to="/check-in">
+            现场签到（领投票码）
+          </Link>
         </Section>
 
         <p className="home-hint">

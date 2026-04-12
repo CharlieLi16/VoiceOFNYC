@@ -122,7 +122,13 @@ server {
 
 另有一套 **Firebase 写入** 的独立静态包，源码在 **`console/frontend/public/vote/`**：观众 **`dist/vote/vote.html`**，工作人员调度 **`dist/vote/index.html`**。说明见 **[README-vote-firebase-static.md](./README-vote-firebase-static.md)**。
 
-## 6. 常见坑
+## 6. 观众现场签到 `/check-in`
+
+React 构建里包含 **`/check-in`**：观众填写姓名、邮箱、可选手机号后，请求后端 **`POST /api/checkin`**，从票码池分配码、**追加一行到 Google Sheet**（需配置 **`GOOGLE_SHEET_CHECKIN_TAB`**，并在表格中预先创建同名工作表），并发送 **邮件（Resend 或 SMTP）**。邮件中为 **每个环节各一条** 带 `roundId` 与 `voteCode` 的链接（默认与 `vote-app.js` 的轮次列表一致，可用 **`VOTE_CHECKIN_ROUND_IDS`** 覆盖）。环境变量见 **`console/backend/.env.example`**（`VOTE_PAGE_BASE_URL`、`CHECKIN_CODES_CSV`、邮件等）。
+
+与整站其它页相同：静态托管时须配置 **`VITE_API_BASE`** 指向可 HTTPS 访问的 FastAPI，并在后端配置 **`CORS_EXTRA_ORIGINS`**（或 **`CORS_ALLOW_ORIGIN_REGEX`**）放行你的前端域名。未完成 Google OAuth 或表格写入失败时，接口会返回错误；请先在能访问后端的环境里完成 **Sheets OAuth**（见后端 README 中表格相关说明）。
+
+## 7. 常见坑
 
 | 现象 | 原因 |
 |------|------|

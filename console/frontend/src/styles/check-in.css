@@ -1,0 +1,41 @@
+.check-in-page {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.check-in-card {
+  max-width: 28rem;
+  width: 100%;
+}
+
+.check-in-intro {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.check-in-form {
+  margin-top: 0.25rem;
+}
+
+.check-in-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.check-in-success-lead {
+  margin: 0 0 0.75rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.check-in-back {
+  display: inline-block;
+  margin-top: 0.5rem;
+  text-align: center;
+}

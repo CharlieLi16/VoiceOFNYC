@@ -18,14 +18,16 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 TOKEN_FILE = BACKEND_ROOT / "data" / "google_oauth_token.json"
 
-_oauth_states: dict[str, float] = {}
+# state -> (创建时间, PKCE code_verifier；无 PKCE 时为 None)。回调换 token 必须与授权时为同一 verifier。
+_oauth_states: dict[str, tuple[float, str | None]] = {}
 STATE_TTL_SEC = 600
 
 
 def _cleanup_states() -> None:
     now = time.time()
-    for s, t in list(_oauth_states.items()):
-        if now - t > STATE_TTL_SEC:
+    for s, entry in list(_oauth_states.items()):
+        ts = entry[0]
+        if now - ts > STATE_TTL_SEC:
             del _oauth_states[s]
 
 
@@ -66,7 +68,6 @@ def start_authorization_url() -> tuple[str, str]:
     """返回 (Google 授权页 URL, state)。"""
     _cleanup_states()
     state = secrets.token_urlsafe(32)
-    _oauth_states[state] = time.time()
     flow = create_flow()
     url, _ = flow.authorization_url(
         access_type="offline",
@@ -74,22 +75,32 @@ def start_authorization_url() -> tuple[str, str]:
         prompt="consent",
         state=state,
     )
+    # Google / 新版库可能对 Web 客户端启用 PKCE；回调换 token 必须带上同一 code_verifier
+    verifier = getattr(flow, "code_verifier", None)
+    _oauth_states[state] = (time.time(), verifier)
     return url, state
 
 
-def consume_state(state: str | None) -> bool:
+def pop_oauth_state(state: str | None) -> tuple[bool, str | None]:
+    """校验并消费 state，返回 (是否有效, code_verifier)。"""
     if not state:
-        return False
+        return False, None
     _cleanup_states()
-    if state not in _oauth_states:
-        return False
-    del _oauth_states[state]
-    return True
+    entry = _oauth_states.pop(state, None)
+    if entry is None:
+        return False, None
+    ts, verifier = entry
+    if time.time() - ts > STATE_TTL_SEC:
+        return False, None
+    return True, verifier
 
 
-def exchange_code(code: str) -> None:
+def exchange_code(code: str, code_verifier: str | None = None) -> None:
     flow = create_flow()
-    flow.fetch_token(code=code)
+    if code_verifier:
+        flow.fetch_token(code=code, code_verifier=code_verifier)
+    else:
+        flow.fetch_token(code=code)
     save_credentials(flow.credentials)
 
 
@@ -133,6 +144,32 @@ def round2_tab() -> str:
 def round3_tab() -> str:
     """决赛打分表（Round3Audience：A2:I7，含 H/I 观众累计）"""
     return os.environ.get("GOOGLE_SHEET_ROUND3_TAB", "Round3Audience")
+
+
+def checkin_tab() -> str:
+    """签到追加行（需先在表格中新建同名 Tab，首行可为表头）"""
+    return os.environ.get("GOOGLE_SHEET_CHECKIN_TAB", "CheckIn").strip() or "CheckIn"
+
+
+def append_rows(tab_name: str, rows: list[list[Any]]) -> None:
+    """在指定工作表末尾追加若干行。"""
+    if not rows:
+        return
+    sid = spreadsheet_id()
+    if not sid:
+        raise ValueError("请设置 GOOGLE_SHEET_ID")
+    svc = sheets_service()
+    if not svc:
+        raise RuntimeError("未完成 OAuth，请先访问 GET /api/sheets/oauth/start")
+    # range 仅表头锚点，append 会插到表末
+    range_a1 = f"{tab_name}!A1"
+    svc.spreadsheets().values().append(
+        spreadsheetId=sid,
+        range=range_a1,
+        valueInputOption="USER_ENTERED",
+        insertDataOption="INSERT_ROWS",
+        body={"values": rows},
+    ).execute()
 
 
 def update_range(range_a1: str, values: list[list[Any]]) -> None:

@@ -3,7 +3,9 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -12,18 +14,51 @@ try:
 except ImportError:
     load_dotenv = None  # type: ignore[misc, assignment]
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+
+def _load_env_manual(path: Path) -> None:
+    """未安装 python-dotenv 时仍读取 backend/.env（与 load_dotenv 默认行为一致：不覆盖已有环境变量）。"""
+    if not path.is_file():
+        return
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key = key.strip()
+        if not key:
+            continue
+        val = val.strip()
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+            val = val[1:-1]
+        if key not in os.environ:
+            os.environ[key] = val
+
+
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
+from app import checkin_db
+from app import checkin_notify
 from app import db
 from app import sheets_oauth
 from app.ws_hub import hub
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
+_env_file = BACKEND_DIR / ".env"
 if load_dotenv is not None:
-    load_dotenv(BACKEND_DIR / ".env")
+    load_dotenv(_env_file)
+else:
+    _load_env_manual(_env_file)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MYDATA_JSON = REPO_ROOT / "assets" / "js" / "mydata.json"
@@ -32,6 +67,9 @@ MYDATA_JSON = REPO_ROOT / "assets" / "js" / "mydata.json"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
+    checkin_db.init_checkin_tables()
+    checkin_db.ensure_checkin_migrations()
+    checkin_db.seed_checkin_pool_if_empty()
     if db.contestant_count() == 0 and MYDATA_JSON.is_file():
         raw = json.loads(MYDATA_JSON.read_text(encoding="utf-8"))
         if isinstance(raw, list) and raw:
@@ -352,10 +390,11 @@ def sheets_oauth_callback(
         raise HTTPException(400, f"Google OAuth 错误: {error}")
     if not code:
         raise HTTPException(400, "缺少 code")
-    if not sheets_oauth.consume_state(state):
+    ok, code_verifier = sheets_oauth.pop_oauth_state(state)
+    if not ok:
         raise HTTPException(400, "state 无效或已过期，请重新打开 /api/sheets/oauth/start")
     try:
-        sheets_oauth.exchange_code(code)
+        sheets_oauth.exchange_code(code, code_verifier)
     except Exception as e:
         raise HTTPException(400, f"换取令牌失败: {e}") from e
     return JSONResponse(
@@ -531,6 +570,89 @@ async def sheets_write_round3_name(body: Round3NameBody) -> JSONResponse:
     except RuntimeError as e:
         raise HTTPException(401, str(e)) from e
     return JSONResponse({"ok": True, "range": rng})
+
+
+_checkin_rl: dict[str, list[float]] = {}
+
+
+def _client_ip(req: Request) -> str:
+    xff = (req.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if xff:
+        return xff
+    return req.client.host if req.client else "unknown"
+
+
+def _checkin_rate_ok(ip: str, limit: int = 10, window: float = 60.0) -> bool:
+    now = time.time()
+    lst = _checkin_rl.setdefault(ip, [])
+    lst[:] = [t for t in lst if now - t < window]
+    if len(lst) >= limit:
+        return False
+    lst.append(now)
+    return True
+
+
+class CheckinBody(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    email: EmailStr
+    phone: str = Field(default="", max_length=40)
+    website: str = Field(default="", max_length=500)
+
+
+@app.post("/api/checkin")
+async def api_checkin(request: Request, body: CheckinBody) -> JSONResponse:
+    """现场签到：分配票码、写 Google Sheet、发邮件。"""
+    if body.website and str(body.website).strip():
+        return JSONResponse({"ok": True})
+
+    if not _checkin_rate_ok(_client_ip(request)):
+        raise HTTPException(429, "请求过于频繁，请稍后再试")
+
+    base = os.environ.get("VOTE_PAGE_BASE_URL", "").strip()
+    if not base:
+        raise HTTPException(503, "签到服务未配置 VOTE_PAGE_BASE_URL")
+
+    round_ids = checkin_db.vote_round_ids_for_checkin()
+    try:
+        code, vote_links, stored_vote_urls = checkin_db.allocate_checkin(
+            name=body.name,
+            email=str(body.email),
+            phone=body.phone or "",
+            vote_page_base=base,
+            vote_round_ids=round_ids,
+        )
+    except checkin_db.CheckinDuplicateEmailError:
+        raise HTTPException(409, "该邮箱已签到")
+    except checkin_db.CheckinPoolExhaustedError:
+        raise HTTPException(503, "投票码已发完")
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    tab = sheets_oauth.checkin_tab()
+    row = [
+        ts,
+        body.name.strip(),
+        str(body.email).strip(),
+        (body.phone or "").strip(),
+        code,
+        stored_vote_urls,
+    ]
+    try:
+        sheets_oauth.append_rows(tab, [row])
+    except Exception as e:
+        checkin_db.revoke_issued_by_code(code)
+        raise HTTPException(502, f"写入表格失败: {e}") from e
+
+    try:
+        checkin_notify.send_checkin_email(
+            str(body.email).strip(), body.name.strip(), code, vote_links
+        )
+    except Exception as e:
+        checkin_db.revoke_issued_by_code(code)
+        raise HTTPException(502, f"发送邮件失败: {e}") from e
+
+    return JSONResponse({"ok": True})
 
 
 @app.websocket("/ws/display")

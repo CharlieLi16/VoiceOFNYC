@@ -25,6 +25,30 @@ async function readError(res: Response): Promise<string> {
   return t.length > 200 ? `${t.slice(0, 200)}…` : t;
 }
 
+export type CheckinResponse = {
+  ok: boolean;
+};
+
+export async function submitCheckin(body: {
+  name: string;
+  email: string;
+  phone: string;
+  website?: string;
+}): Promise<CheckinResponse> {
+  const res = await fetch(apiUrl("/api/checkin"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: body.name,
+      email: body.email,
+      phone: body.phone ?? "",
+      website: body.website ?? "",
+    }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return res.json() as Promise<CheckinResponse>;
+}
+
 export async function fetchState(): Promise<StatePayload> {
   let res: Response;
   try {
