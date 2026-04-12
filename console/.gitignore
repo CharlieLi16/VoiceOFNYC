@@ -18,8 +18,9 @@ firebase-vote/functions/.env
 firebase-vote/functions/.env.*
 !firebase-vote/functions/.env.example
 firebase-vote/scripts/node_modules/
-# 投票码导出（勿提交仓库）
+# 投票码导出（勿提交仓库）；vote-codes.csv 例外——签到池 / Docker COPY 依赖，须进 Git 才能在 Railway 构建
 firebase-vote/data/*.csv
+!firebase-vote/data/vote-codes.csv
 
 # Local service account / keys (never commit)
 key/
