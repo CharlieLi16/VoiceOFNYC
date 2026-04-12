@@ -94,6 +94,7 @@ def send_checkin_email(
         port = int(os.environ.get("SMTP_PORT", "587"))
         use_tls = os.environ.get("SMTP_TLS", "1").strip() not in ("0", "false", "no")
         from_addr = os.environ.get("SMTP_FROM", user).strip()
+        smtp_timeout = float(os.environ.get("SMTP_TIMEOUT_SEC", "45").strip() or "45")
         msg = EmailMessage()
         msg["Subject"] = subject
         msg["From"] = from_addr
@@ -101,12 +102,12 @@ def send_checkin_email(
         msg.set_content(body)
         if port == 465:
             context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(smtp_host, port, context=context) as smtp:
+            with smtplib.SMTP_SSL(smtp_host, port, timeout=smtp_timeout, context=context) as smtp:
                 if user:
                     smtp.login(user, password)
                 smtp.send_message(msg)
         else:
-            with smtplib.SMTP(smtp_host, port) as smtp:
+            with smtplib.SMTP(smtp_host, port, timeout=smtp_timeout) as smtp:
                 if use_tls:
                     smtp.starttls(context=ssl.create_default_context())
                 if user:
