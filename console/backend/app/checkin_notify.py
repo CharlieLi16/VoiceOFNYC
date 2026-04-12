@@ -3,12 +3,44 @@ from __future__ import annotations
 
 import os
 import smtplib
+import socket
 import ssl
+import threading
+from contextlib import contextmanager
 from email.message import EmailMessage
 
 import httpx
 
 from app.checkin_mail_labels import mail_title_and_subtitle
+
+# Docker / Railway 等环境常无可用 IPv6 路由；解析到 AAAA 后连接会报 [Errno 101] Network is unreachable。
+# 仅在对 Resend 发请求时临时强制 IPv4（可用 RESEND_FORCE_IPV4=0 关闭）。
+_resend_dns_lock = threading.Lock()
+
+
+@contextmanager
+def _ipv4_only_getaddrinfo() -> None:
+    if os.environ.get("RESEND_FORCE_IPV4", "1").strip().lower() in ("0", "false", "no"):
+        yield
+        return
+    with _resend_dns_lock:
+        orig = socket.getaddrinfo
+
+        def _only_inet4(
+            host: str,
+            port: int,
+            family: int = 0,
+            type: int = 0,  # noqa: A002 与 socket.getaddrinfo 参数名一致
+            proto: int = 0,
+            flags: int = 0,
+        ) -> list:
+            return orig(host, port, socket.AF_INET, type, proto, flags)
+
+        socket.getaddrinfo = _only_inet4  # type: ignore[method-assign]
+        try:
+            yield
+        finally:
+            socket.getaddrinfo = orig  # type: ignore[method-assign]
 
 
 def send_checkin_email(
@@ -38,17 +70,20 @@ def send_checkin_email(
         from_addr = os.environ.get("RESEND_FROM", "").strip()
         if not from_addr:
             raise RuntimeError("已设置 RESEND_API_KEY 但未设置 RESEND_FROM（发件人邮箱）")
-        r = httpx.post(
-            "https://api.resend.com/emails",
-            headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
-            json={
-                "from": from_addr,
-                "to": [to_email],
-                "subject": subject,
-                "text": body,
-            },
-            timeout=30.0,
-        )
+        # trust_env=False：忽略误配的 HTTP_PROXY/HTTPS_PROXY。
+        with _ipv4_only_getaddrinfo():
+            r = httpx.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                json={
+                    "from": from_addr,
+                    "to": [to_email],
+                    "subject": subject,
+                    "text": body,
+                },
+                timeout=30.0,
+                trust_env=False,
+            )
         r.raise_for_status()
         return
 
