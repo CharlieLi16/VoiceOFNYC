@@ -4,109 +4,69 @@
     "name": "Siwei",
     "img": "/img/contestants/1.jpg",
     "song": "可乐",
-    "songTwo": "《天后》",
-    "judges": "0",
-    "audience": "0",
-    "total": "0",
-    "ranking": 0
+    "songTwo": "《天后》"
   },
   {
     "id": 1,
     "name": "蔡彦培",
     "img": "/img/contestants/2.jpg",
     "song": "相爱后动物感伤",
-    "songTwo": "《可有可无》",
-    "judges": "0",
-    "audience": "0",
-    "total": "0",
-    "ranking": 1
+    "songTwo": "《可有可无》"
   },
   {
     "id": 2,
     "name": "Julian Zhu",
     "img": "/img/contestants/3.jpg",
     "song": "动物世界",
-    "songTwo": "《其实》",
-    "judges": "0",
-    "audience": "0",
-    "total": "0",
-    "ranking": 2
+    "songTwo": "《其实》"
   },
   {
     "id": 3,
     "name": "Mandy",
     "img": "/img/contestants/4.jpg",
     "song": "你把我灌醉",
-    "songTwo": "《离歌》",
-    "judges": "0",
-    "audience": "0",
-    "total": "0",
-    "ranking": 3
+    "songTwo": "《离歌》"
   },
   {
     "id": 4,
     "name": "赵星童",
     "img": "/img/contestants/5.jpg",
     "song": "《等待》",
-    "songTwo": "《城市之光》",
-    "judges": "0",
-    "audience": "0",
-    "total": "0",
-    "ranking": 4
+    "songTwo": "《城市之光》"
   },
   {
     "id": 5,
     "name": "coco林小妍",
     "img": "/img/contestants/6.jpg",
     "song": "失落沙洲",
-    "songTwo": "《天空》",
-    "judges": "0",
-    "audience": "0",
-    "total": "0",
-    "ranking": 5
+    "songTwo": "《天空》"
   },
   {
     "id": 6,
     "name": "吴子涵",
     "img": "/img/contestants/7.jpg",
     "song": "嘉宾",
-    "songTwo": "《Always Online》",
-    "judges": "0",
-    "audience": "0",
-    "total": "0",
-    "ranking": 6
+    "songTwo": "《Always Online》"
   },
   {
     "id": 7,
     "name": "Timmy Zihan Ma",
     "img": "/img/contestants/8.jpg",
     "song": "Try Everything",
-    "songTwo": "《Rolling in the Deep》",
-    "judges": "0",
-    "audience": "0",
-    "total": "0",
-    "ranking": 7
+    "songTwo": "《Rolling in the Deep》"
   },
   {
     "id": 8,
     "name": "刘佳希",
     "img": "/img/contestants/9.jpg",
     "song": "Dear Friend",
-    "songTwo": "《心火》",
-    "judges": "0",
-    "audience": "0",
-    "total": "0",
-    "ranking": 8
+    "songTwo": "《心火》"
   },
   {
     "id": 9,
     "name": "Hazel Jia",
     "img": "/img/contestants/10.jpg",
     "song": "I wish you love",
-    "songTwo": "《不是因为天气晴朗才爱你》",
-    "judges": "0",
-    "audience": "0",
-    "total": "0",
-    "ranking": 9
+    "songTwo": "《不是因为天气晴朗才爱你》"
   }
 ]

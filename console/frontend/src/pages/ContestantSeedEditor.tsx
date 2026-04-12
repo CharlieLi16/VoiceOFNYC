@@ -5,21 +5,26 @@ import type { Contestant } from "@/api/types";
 
 const SEED_URL = "/data/seed-contestants.json";
 
-function emptyRow(nextId: number, ranking: number): Contestant {
+/** 选手资料编辑仅维护档案字段；分数字段提交时由前端补默认，算分以 Google Sheet / 控分为准 */
+export type SeedContestantRow = {
+  id: number;
+  name: string;
+  img: string;
+  song: string;
+  songTwo: string;
+};
+
+function emptyRow(nextId: number): SeedContestantRow {
   return {
     id: nextId,
     name: "",
     img: `/img/contestants/${Math.min(nextId + 1, 10)}.jpg`,
     song: "",
     songTwo: "",
-    judges: "0",
-    audience: "0",
-    total: "0",
-    ranking,
   };
 }
 
-function parseImportedList(raw: unknown): Contestant[] {
+function parseSeedRows(raw: unknown): SeedContestantRow[] {
   if (!Array.isArray(raw)) throw new Error("根节点须为数组");
   return raw.map((item, idx) => {
     if (!item || typeof item !== "object") throw new Error(`第 ${idx + 1} 项不是对象`);
@@ -32,16 +37,37 @@ function parseImportedList(raw: unknown): Contestant[] {
       img: String(o.img ?? ""),
       song: String(o.song ?? ""),
       songTwo: String(o.songTwo ?? ""),
-      judges: String(o.judges ?? "0"),
-      audience: String(o.audience ?? "0"),
-      total: String(o.total ?? "0"),
-      ranking: Number.isInteger(Number(o.ranking)) ? Number(o.ranking) : idx,
     };
   });
 }
 
+function contestantToSeedRow(c: Contestant): SeedContestantRow {
+  return {
+    id: c.id,
+    name: c.name,
+    img: c.img,
+    song: c.song,
+    songTwo: c.songTwo,
+  };
+}
+
+/** 与后端 import_contestants 兼容：补全分数字段，排名按当前表格顺序 */
+function rowsToImportPayload(rows: SeedContestantRow[]): Record<string, unknown>[] {
+  return rows.map((r, idx) => ({
+    id: r.id,
+    name: r.name,
+    img: r.img,
+    song: r.song,
+    songTwo: r.songTwo,
+    judges: "0",
+    audience: "0",
+    total: "0",
+    ranking: idx,
+  }));
+}
+
 export default function ContestantSeedEditor() {
-  const [rows, setRows] = useState<Contestant[]>([]);
+  const [rows, setRows] = useState<SeedContestantRow[]>([]);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,7 +79,7 @@ export default function ContestantSeedEditor() {
       const r = await fetch(SEED_URL);
       if (!r.ok) throw new Error(`无法加载 ${SEED_URL}（HTTP ${r.status}）`);
       const data = (await r.json()) as unknown;
-      setRows(parseImportedList(data));
+      setRows(parseSeedRows(data));
       setMsg({ ok: true, text: "已从内置种子加载，可直接修改后导出。" });
     } catch (e) {
       setLoadErr(String(e));
@@ -74,10 +100,10 @@ export default function ContestantSeedEditor() {
         });
         return;
       }
-      setRows(list.map((c) => ({ ...c })));
+      setRows(list.map(contestantToSeedRow));
       setMsg({
         ok: true,
-        text: `已从服务器 SQLite 载入 ${list.length} 人（与 /display、控分后台一致）。`,
+        text: `已从服务器载入 ${list.length} 人（仅档案字段；分数字段未在此展示）。`,
       });
     } catch (e) {
       setLoadErr(String(e));
@@ -88,7 +114,7 @@ export default function ContestantSeedEditor() {
     void loadFromSeed();
   }, [loadFromSeed]);
 
-  function patchRow(i: number, patch: Partial<Contestant>) {
+  function patchRow(i: number, patch: Partial<SeedContestantRow>) {
     setRows((prev) => {
       const next = [...prev];
       next[i] = { ...next[i], ...patch };
@@ -99,7 +125,7 @@ export default function ContestantSeedEditor() {
   function addRow() {
     setRows((prev) => {
       const nextId = prev.length ? Math.max(...prev.map((c) => c.id)) + 1 : 0;
-      return [...prev, emptyRow(nextId, prev.length)];
+      return [...prev, emptyRow(nextId)];
     });
   }
 
@@ -113,7 +139,7 @@ export default function ContestantSeedEditor() {
     try {
       const text = await f.text();
       const data = JSON.parse(text) as unknown;
-      setRows(parseImportedList(data));
+      setRows(parseSeedRows(data));
       setMsg({ ok: true, text: `已从「${f.name}」载入 ${Array.isArray(data) ? data.length : 0} 条` });
     } catch (e) {
       setLoadErr(String(e));
@@ -127,7 +153,10 @@ export default function ContestantSeedEditor() {
     a.download = "seed-contestants.json";
     a.click();
     URL.revokeObjectURL(a.href);
-    setMsg({ ok: true, text: "已下载 seed-contestants.json，可覆盖 public/data/ 后 build，或在控分后台「导入 JSON」写入服务器。" });
+    setMsg({
+      ok: true,
+      text: "已下载 seed-contestants.json（仅含档案字段）。可覆盖 public/data/ 后 build，或在控分后台「导入 JSON」写入服务器。",
+    });
   }
 
   async function pushToServer() {
@@ -135,10 +164,10 @@ export default function ContestantSeedEditor() {
     setMsg(null);
     setLoadErr(null);
     try {
-      const res = await importContestants(rows as Record<string, unknown>[]);
+      const res = await importContestants(rowsToImportPayload(rows));
       setMsg({
         ok: true,
-        text: `已写入服务器 SQLite，共 ${res.contestants.length} 人（与 /display 等接口一致）。`,
+        text: `已写入服务器 SQLite，共 ${res.contestants.length} 人。分数以 Google Sheet / 现场控分为准；本页提交时分为占位 0。`,
       });
     } catch (e) {
       setLoadErr(String(e));
@@ -187,9 +216,10 @@ export default function ContestantSeedEditor() {
       </header>
 
       <p className="admin-hint subtle">
-        <strong>从服务器载入</strong>会读取当前 SQLite 里选手（与控分后台、大屏一致）；<strong>重新加载内置种子</strong>来自{" "}
-        <code>public/data/seed-contestants.json</code>。修改后点<strong>导出 JSON</strong>下载，或<strong>提交到服务器</strong>写回
-        SQLite（须启动后端 + <code>npm run dev</code> 或配置 <code>VITE_API_BASE</code>）。
+        本页只编辑 <strong>id / 姓名 / 头像 / 曲目</strong>，不包含评委分、观众分、总分、排名（算分以 <strong>Google Sheet</strong> 与控台为准）。
+        <strong>从服务器载入</strong>仅拉取档案字段；<strong>重新加载内置种子</strong>来自{" "}
+        <code>public/data/seed-contestants.json</code>。提交到服务器时会自动补占位分数以便 SQLite 兼容。须启动后端 +{" "}
+        <code>npm run dev</code> 或配置 <code>VITE_API_BASE</code>。
       </p>
 
       {loadErr && <div className="banner error">{loadErr}</div>}
@@ -204,10 +234,6 @@ export default function ContestantSeedEditor() {
               <th>头像路径</th>
               <th>曲目</th>
               <th>副标题/第二首</th>
-              <th>judges</th>
-              <th>audience</th>
-              <th>total</th>
-              <th>ranking</th>
               <th />
             </tr>
           </thead>
@@ -252,38 +278,6 @@ export default function ContestantSeedEditor() {
                     type="text"
                     value={c.songTwo}
                     onChange={(e) => patchRow(i, { songTwo: e.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="seed-editor-cell"
-                    type="text"
-                    value={c.judges}
-                    onChange={(e) => patchRow(i, { judges: e.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="seed-editor-cell"
-                    type="text"
-                    value={c.audience}
-                    onChange={(e) => patchRow(i, { audience: e.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="seed-editor-cell"
-                    type="text"
-                    value={c.total}
-                    onChange={(e) => patchRow(i, { total: e.target.value })}
-                  />
-                </td>
-                <td>
-                  <input
-                    className="seed-editor-cell"
-                    type="number"
-                    value={c.ranking}
-                    onChange={(e) => patchRow(i, { ranking: parseInt(e.target.value, 10) || 0 })}
                   />
                 </td>
                 <td>
