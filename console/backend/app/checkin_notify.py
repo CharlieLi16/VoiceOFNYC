@@ -14,16 +14,24 @@ import httpx
 from app.checkin_mail_labels import mail_title_and_subtitle
 
 # Docker / Railway 等环境常无可用 IPv6 路由；解析到 AAAA 后连接会报 [Errno 101] Network is unreachable。
-# 仅在对 Resend 发请求时临时强制 IPv4（可用 RESEND_FORCE_IPV4=0 关闭）。
-_resend_dns_lock = threading.Lock()
+# 对 Resend（HTTPS）与 SMTP（smtplib 连 smtp.gmail.com 等）均在连接前临时强制 IPv4。
+# MAIL_OUTBOUND_IPV4=0 或 RESEND_FORCE_IPV4=0 可关闭（后者兼容旧配置）。
+_mail_dns_lock = threading.Lock()
+
+
+def _mail_force_ipv4() -> bool:
+    explicit = os.environ.get("MAIL_OUTBOUND_IPV4", "").strip()
+    if explicit:
+        return explicit.lower() not in ("0", "false", "no")
+    return os.environ.get("RESEND_FORCE_IPV4", "1").strip().lower() not in ("0", "false", "no")
 
 
 @contextmanager
 def _ipv4_only_getaddrinfo() -> None:
-    if os.environ.get("RESEND_FORCE_IPV4", "1").strip().lower() in ("0", "false", "no"):
+    if not _mail_force_ipv4():
         yield
         return
-    with _resend_dns_lock:
+    with _mail_dns_lock:
         orig = socket.getaddrinfo
 
         def _only_inet4(
@@ -100,19 +108,20 @@ def send_checkin_email(
         msg["From"] = from_addr
         msg["To"] = to_email
         msg.set_content(body)
-        if port == 465:
-            context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(smtp_host, port, timeout=smtp_timeout, context=context) as smtp:
-                if user:
-                    smtp.login(user, password)
-                smtp.send_message(msg)
-        else:
-            with smtplib.SMTP(smtp_host, port, timeout=smtp_timeout) as smtp:
-                if use_tls:
-                    smtp.starttls(context=ssl.create_default_context())
-                if user:
-                    smtp.login(user, password)
-                smtp.send_message(msg)
+        with _ipv4_only_getaddrinfo():
+            if port == 465:
+                context = ssl.create_default_context()
+                with smtplib.SMTP_SSL(smtp_host, port, timeout=smtp_timeout, context=context) as smtp:
+                    if user:
+                        smtp.login(user, password)
+                    smtp.send_message(msg)
+            else:
+                with smtplib.SMTP(smtp_host, port, timeout=smtp_timeout) as smtp:
+                    if use_tls:
+                        smtp.starttls(context=ssl.create_default_context())
+                    if user:
+                        smtp.login(user, password)
+                    smtp.send_message(msg)
         return
 
     raise RuntimeError("未配置邮件：请设置 RESEND_API_KEY+RESEND_FROM，或 SMTP_HOST 等")
