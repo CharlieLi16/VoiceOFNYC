@@ -67,10 +67,10 @@ window.__VOTE_PAGE_CONFIG = {
    */
   testVoteCode: "cssa2026",
   /**
-   * 是否在提交成功后锁本机一次：默认「要投票码时不锁」（避免错码仍占死一次），「不要投票码时锁」。
-   * 现场每人只投一票且码必对时，可设 requireVoteCode:true + lockBrowserAfterSubmit:true
+   * 是否在提交成功后锁本浏览器该轮一次（localStorage；非硬件设备指纹，换浏览器/清存储可再投）。
+   * requireVoteCode:true 时须为 true 才会在验票成功并提交后生效；避免错码占死可依赖「码错不写入」逻辑。
    */
-  lockBrowserAfterSubmit: false,
+  lockBrowserAfterSubmit: true,
   /** 与 Cloud Functions 中 submitVote 部署区域一致 */
   functionsRegion: "us-east4",
   /** 本机 http://localhost:5173 默认已跳过 voteUi；用手机扫局域网 IP 打开时若被线上 voteUi 搞乱，可取消下行注释 */

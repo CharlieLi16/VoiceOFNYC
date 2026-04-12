@@ -39,7 +39,7 @@ window.__VOTE_PAGE_CONFIG = {
   // testVoteCode: "CSSA-VOTE-TEST",
   /** 设为 false 则忽略 URL 里的 voteCode/code（默认会从 ?voteCode= 预填，方便短信私发） */
   // allowVoteCodeFromUrl: false,
-  lockBrowserAfterSubmit: false,
+  lockBrowserAfterSubmit: true,
   functionsRegion: "us-east4",
   /** 任意环境强制不读 Firestore voteUi（仅用本文件） */
   // ignoreFirestoreVoteUi: true,
