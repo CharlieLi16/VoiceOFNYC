@@ -1,4 +1,4 @@
-"""签到成功后的邮件（Resend 或 SMTP）。"""
+"""签到成功后的邮件（SMTP）。"""
 from __future__ import annotations
 
 import os
@@ -9,13 +9,11 @@ import threading
 from contextlib import contextmanager
 from email.message import EmailMessage
 
-import httpx
-
 from app.checkin_mail_labels import mail_title_and_subtitle
 
 # Docker / Railway 等环境常无可用 IPv6 路由；解析到 AAAA 后连接会报 [Errno 101] Network is unreachable。
-# 对 Resend（HTTPS）与 SMTP（smtplib 连 smtp.gmail.com 等）均在连接前临时强制 IPv4。
-# MAIL_OUTBOUND_IPV4=0 或 RESEND_FORCE_IPV4=0 可关闭（后者兼容旧配置）。
+# 对 SMTP（smtplib 连 smtp.gmail.com 等）在连接前临时强制 IPv4。
+# MAIL_OUTBOUND_IPV4=0 可关闭；兼容旧名 RESEND_FORCE_IPV4=0。
 _mail_dns_lock = threading.Lock()
 
 
@@ -23,7 +21,10 @@ def _mail_force_ipv4() -> bool:
     explicit = os.environ.get("MAIL_OUTBOUND_IPV4", "").strip()
     if explicit:
         return explicit.lower() not in ("0", "false", "no")
-    return os.environ.get("RESEND_FORCE_IPV4", "1").strip().lower() not in ("0", "false", "no")
+    legacy = os.environ.get("RESEND_FORCE_IPV4", "").strip()
+    if legacy:
+        return legacy.lower() not in ("0", "false", "no")
+    return True
 
 
 @contextmanager
@@ -62,7 +63,7 @@ def send_checkin_email(
     )
     parts = [
         f"Hi {name},\n\n",
-        f"感谢您参加2026 年 由Tandon CSSA 主办的心动的声音 Voice of NYC。\n\n你的投票码是：{code}\n\n",
+        f"感谢您参加2026 年 由TandonCSSA 主办的心动的声音 Voice of NYC。\n\n你的投票码是：{code}\n\n",
         "以下为各环节的投票链接（打开即可投票，已含投票码）：\n",
     ]
     for rid, url in vote_links:
@@ -71,29 +72,8 @@ def send_checkin_email(
         if sub:
             parts.append(f"{sub}\n")
         parts.append(f"{url}\n")
-    parts.append("\n请保存本邮件；现场也可向工作人员求助。\n— Voice of NYC\n")
+    parts.append("\n请保存本邮件；现场也可向工作人员求助。\n— TandonCSSA\n")
     body = "".join(parts)
-    resend_key = os.environ.get("RESEND_API_KEY", "").strip()
-    if resend_key:
-        from_addr = os.environ.get("RESEND_FROM", "").strip()
-        if not from_addr:
-            raise RuntimeError("已设置 RESEND_API_KEY 但未设置 RESEND_FROM（发件人邮箱）")
-        # trust_env=False：忽略误配的 HTTP_PROXY/HTTPS_PROXY。
-        with _ipv4_only_getaddrinfo():
-            r = httpx.post(
-                "https://api.resend.com/emails",
-                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
-                json={
-                    "from": from_addr,
-                    "to": [to_email],
-                    "subject": subject,
-                    "text": body,
-                },
-                timeout=30.0,
-                trust_env=False,
-            )
-        r.raise_for_status()
-        return
 
     smtp_host = os.environ.get("SMTP_HOST", "").strip()
     if smtp_host:
@@ -124,4 +104,4 @@ def send_checkin_email(
                     smtp.send_message(msg)
         return
 
-    raise RuntimeError("未配置邮件：请设置 RESEND_API_KEY+RESEND_FROM，或 SMTP_HOST 等")
+    raise RuntimeError("未配置邮件：请设置 SMTP_HOST、SMTP_USER、SMTP_PASSWORD 等（见 .env.example）")

@@ -1,6 +1,6 @@
 # Voice of NYC Console
 
-独立 **Python（FastAPI）+ React（TypeScript / TSX）** 控制台：选手名单与打分存 **SQLite**，大屏通过 **WebSocket** 实时刷新。与仓库根目录静态站点 **互不修改**；首次启动若数据库为空，会自动从上级仓库的 `assets/js/mydata.json` 导入种子数据（路径相对于本目录的 `backend/app/main.py` 解析到 `CSSA-voiceOfNYC` 根）。
+独立 **Python（FastAPI）+ React（TypeScript / TSX）** 控制台：选手名单与打分存 **SQLite**；数据变更后后端可通过 **WebSocket** 向已连接客户端广播状态。与仓库根目录静态站点 **互不修改**；首次启动若数据库为空，会自动从上级仓库的 `assets/js/mydata.json` 导入种子数据（路径相对于本目录的 `backend/app/main.py` 解析到 `CSSA-voiceOfNYC` 根）。
 
 ## 环境
 
@@ -56,7 +56,6 @@ npm run dev
 浏览器打开 Vite 提示的地址（默认 `http://127.0.0.1:5173`）。`/api` 与 `/ws` 由 Vite 代理到 `8765`。
 
 - **控分后台**：`/admin`（选手名单导入见 [`docs/README-contestant-import.md`](docs/README-contestant-import.md)；**现场大屏选手 lineup**（第一轮 PK 五组、复活投票等）可在同页底部编辑并写入 SQLite，见 [`docs/README-audience-vote.md`](docs/README-audience-vote.md)）
-- **大屏（排名 WebSocket）**：`/display`
 - **观众投票柱图（全屏，Google 表轮询）**：`/stage/round1/1`～`/stage/round1/5`（每组单独 score11 式布局）、`/stage/round2`（**复活投票五人** + 揭晓流程；`/stage/final` 重定向至此）、`/stage/final-reveal`  
   配置见 [`docs/README-audience-vote.md`](docs/README-audience-vote.md)，前端复制 `frontend/.env.example` → `.env.local` 填写 `VITE_GOOGLE_SHEET_ID` 与 `VITE_GOOGLE_SHEETS_API_KEY`。
 
@@ -80,7 +79,7 @@ npm run build
 | POST | `/api/stage/round1-pairs/import-from-files` | 从 `frontend/public/stage/round1/1.json`～`5.json` 导入库 |
 | GET/PUT | `/api/stage/round2-lineup` | Round2 lineup 6 槽（表 `round2_lineup_meta`；复活屏用前 5） |
 | POST | `/api/stage/round2-lineup/import-from-files` | 从 `frontend/public/stage/round2/1.json`～`6.json` 导入库 |
-| WS | `/ws/display` | 连接后推送当前 state；服务端在数据变更后广播 |
+| WS | `/ws/display` | 连接后推送当前 state；服务端在数据变更后广播（仓库内无独立大屏页，可自行对接） |
 
 OpenAPI：`http://127.0.0.1:8765/docs`
 

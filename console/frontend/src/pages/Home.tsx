@@ -29,7 +29,7 @@ export default function Home() {
     <main className="page home-page">
       <div className="home-hub">
         <h1 className="display-title">Voice of NYC</h1>
-        <p className="home-tagline">控制台总入口 · 后台配置 · 大屏与投票</p>
+        <p className="home-tagline">控制台总入口 · 后台配置与投票</p>
 
         <Section
           id="staff"
@@ -45,12 +45,6 @@ export default function Home() {
           <a className="cta cta-ghost" href="/vote/index.html">
             投票调度台（静态）
           </a>
-        </Section>
-
-        <Section id="display" title="现场展示" hint="与 WebSocket 同步的算分大屏">
-          <Link className="cta cta-gold" to="/display">
-            打开现场大屏
-          </Link>
         </Section>
 
         <Section

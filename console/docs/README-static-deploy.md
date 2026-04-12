@@ -83,7 +83,7 @@ server {
 
 1. [Vercel](https://vercel.com) → New Project → 导入本仓库 → **Settings → General → Root Directory** 填 **`console/frontend`** 并保存，再 **Redeploy**。
 2. **Environment Variables** 里添加与 `.env.production` 相同的 `VITE_*`（至少按需填 `VITE_API_BASE`、`VITE_GOOGLE_SHEET_ID`、`VITE_GOOGLE_SHEETS_API_KEY` 等），保存后 Redeploy。
-3. **`VITE_API_BASE`**：填你 **HTTPS** 可访问的 FastAPI 根地址（无尾斜杠）。大屏 **`/display`** 的 WebSocket 会从该地址推导 `wss://…/ws/display`；静态站本身没有后端 WebSocket 时必须设置此项。
+3. **`VITE_API_BASE`**：填你 **HTTPS** 可访问的 FastAPI 根地址（无尾斜杠）。控制台页面（如 **`/admin`**、**`/check-in`**）通过该地址调用 **`/api/*`**；静态站没有同源后端时必须设置此项。
 
 4. **后端 CORS（本地能开、Vercel 报 `Failed to fetch` 时最常见原因）**：默认 FastAPI 只允许 `localhost` / `127.0.0.1` 开发端口。部署在公网的后端须在运行环境里增加：
    - **`CORS_EXTRA_ORIGINS`**：逗号分隔，例如 `https://你的项目.vercel.app`（生产域名）；若有 Preview 分支，把 `https://xxx-git-yyy-team.vercel.app` 一并写上，或
@@ -124,7 +124,7 @@ server {
 
 ## 6. 观众现场签到 `/check-in`
 
-React 构建里包含 **`/check-in`**：观众填写姓名、邮箱、可选手机号后，请求后端 **`POST /api/checkin`**，从票码池分配码、**追加一行到 Google Sheet**（需配置 **`GOOGLE_SHEET_CHECKIN_TAB`**，并在表格中预先创建同名工作表），并发送 **邮件（Resend 或 SMTP）**。邮件中为 **每个环节各一条** 带 `roundId` 与 `voteCode` 的链接（默认与 `vote-app.js` 的轮次列表一致，可用 **`VOTE_CHECKIN_ROUND_IDS`** 覆盖）。环境变量见 **`console/backend/.env.example`**（`VOTE_PAGE_BASE_URL`、`CHECKIN_CODES_CSV`、邮件等）。
+React 构建里包含 **`/check-in`**：观众填写姓名、邮箱、可选手机号后，请求后端 **`POST /api/checkin`**，从票码池分配码、**追加一行到 Google Sheet**（需配置 **`GOOGLE_SHEET_CHECKIN_TAB`**，并在表格中预先创建同名工作表），并发送 **邮件（SMTP，见后端 `.env.example`）**。邮件中为 **每个环节各一条** 带 `roundId` 与 `voteCode` 的链接（默认与 `vote-app.js` 的轮次列表一致，可用 **`VOTE_CHECKIN_ROUND_IDS`** 覆盖）。环境变量见 **`console/backend/.env.example`**（`VOTE_PAGE_BASE_URL`、`CHECKIN_CODES_CSV`、邮件等）。
 
 与整站其它页相同：静态托管时须配置 **`VITE_API_BASE`** 指向可 HTTPS 访问的 FastAPI，并在后端配置 **`CORS_EXTRA_ORIGINS`**（或 **`CORS_ALLOW_ORIGIN_REGEX`**）放行你的前端域名。未完成 Google OAuth 或表格写入失败时，接口会返回错误；请先在能访问后端的环境里完成 **Sheets OAuth**（见后端 README 中表格相关说明）。
 

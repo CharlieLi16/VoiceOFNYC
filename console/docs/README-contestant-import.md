@@ -9,7 +9,7 @@
   - 名单 JSON：`frontend/public/data/seed-contestants.json`
   - 头像文件：`frontend/public/img/contestants/1.jpg`～`10.jpg`（可用 `scripts/setup-contestant-photos-1-10.sh` 从 `image0`～`image9` 生成）
 
-大屏 `/display`、控分 `/admin` 从接口读取选手；头像字段为 **URL 路径**（约定 `/img/contestants/1.jpg`～`10.jpg` 对应选手 id 0～9），由浏览器向当前站点请求静态资源。
+控分 **`/admin`** 等环节页从接口读取选手；头像字段为 **URL 路径**（约定 `/img/contestants/1.jpg`～`10.jpg` 对应选手 id 0～9），由浏览器向当前站点请求静态资源。
 
 ---
 

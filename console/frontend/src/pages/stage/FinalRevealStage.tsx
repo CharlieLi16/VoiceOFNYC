@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   fetchFinalLineup,
@@ -9,6 +9,7 @@ import {
 import type { Round2LineupSlot } from "@/api/types";
 import { parseFloatCell } from "@/api/sheetsClient";
 import { DEFAULT_FINAL_AUDIENCE_RANGE } from "@/config/audienceSheetRanges";
+import { useStageHintsVisible } from "@/contexts/StageHintsContext";
 import { useStageCleanUi } from "@/utils/stageCleanUi";
 import { nameFromContestantImg } from "@/config/stageContestantPresets";
 import { getSheetsPollConfig } from "@/config/sheetsEnv";
@@ -88,6 +89,27 @@ function sortIndicesByScore(scores: number[]): number[] {
     if (scores[b] !== scores[a]) return scores[b] - scores[a];
     return a - b;
   });
+}
+
+/**
+ * 空格揭晓顺序：先按名次揭晓后三名（第六→第五→第四），再按季→亚→冠（分数第三→第二→第一）。
+ * 与 sortIndicesByScore 一致：sorted[0] 为最高分（冠军位），sorted[5] 为最低分（第六名）。
+ */
+function buildRevealSequence(scores: number[]): number[] {
+  const sorted = sortIndicesByScore(scores);
+  const n = sorted.length;
+  if (n === 0) return [];
+  if (n < 6) {
+    return [...sorted].reverse();
+  }
+  return [
+    sorted[5],
+    sorted[4],
+    sorted[3],
+    sorted[2],
+    sorted[1],
+    sorted[0],
+  ];
 }
 
 type SlotView = {
@@ -203,10 +225,15 @@ export default function FinalRevealStage() {
   const judgeW = frCfg?.judgeWeight ?? DEFAULT_WEIGHTS.judge;
   const audienceW = frCfg?.audienceWeight ?? DEFAULT_WEIGHTS.audience;
   const cleanUi = useStageCleanUi();
+  const hintsVisible = useStageHintsVisible();
   const { rows, error, sheetDataReady } = useSheetRangePoll(range);
 
   const [lineupApi, setLineupApi] = useState<Round2LineupSlot[] | null>(null);
-  const [revealedCount, setRevealedCount] = useState(0);
+  /** 已揭晓几步（0～6），顺序见 frozenRevealSeq */
+  const [revealStep, setRevealStep] = useState(0);
+  /** 第一次按空格时锁定，避免揭晓过程中表格轮询改分导致顺序跳动 */
+  const [frozenRevealSeq, setFrozenRevealSeq] = useState<number[] | null>(null);
+
   const [winnerHighlighted, setWinnerHighlighted] = useState(false);
   const [top3Only, setTop3Only] = useState(false);
 
@@ -263,6 +290,8 @@ export default function FinalRevealStage() {
   );
 
   const scores = useMemo(() => slots.map((s) => s.score), [slots]);
+  const scoresRef = useRef(scores);
+  scoresRef.current = scores;
 
   const medals = useMemo((): ("gold" | "silver" | "bronze" | null)[] => {
     if (!winnerHighlighted) return Array(MAX_ROWS).fill(null);
@@ -279,8 +308,19 @@ export default function FinalRevealStage() {
     return displayOrder.slice(0, 3);
   }, [displayOrder, top3Only]);
 
+  const revealSequenceLive = useMemo(
+    () => frozenRevealSeq ?? buildRevealSequence(scores),
+    [frozenRevealSeq, scores]
+  );
+
+  const revealedSlotSet = useMemo(() => {
+    const seq = revealSequenceLive;
+    return new Set(seq.slice(0, revealStep));
+  }, [revealSequenceLive, revealStep]);
+
   const reset = useCallback(() => {
-    setRevealedCount(0);
+    setRevealStep(0);
+    setFrozenRevealSeq(null);
     setWinnerHighlighted(false);
     setTop3Only(false);
   }, []);
@@ -291,19 +331,23 @@ export default function FinalRevealStage() {
         const t = e.target as HTMLElement | null;
         if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
         e.preventDefault();
-        if (revealedCount < MAX_ROWS) {
-          setRevealedCount((c) => Math.min(MAX_ROWS, c + 1));
-        } else if (revealedCount === MAX_ROWS && !winnerHighlighted) {
+        if (revealStep < MAX_ROWS) {
+          if (revealStep === 0) {
+            setFrozenRevealSeq(buildRevealSequence(scoresRef.current));
+          }
+          setRevealStep((c) => Math.min(MAX_ROWS, c + 1));
+        } else if (revealStep === MAX_ROWS && !winnerHighlighted) {
           setWinnerHighlighted(true);
           setTop3Only(false);
         } else if (winnerHighlighted && !top3Only) {
           setTop3Only(true);
         }
-      } else if (e.code === "KeyR") {
+      } else if (e.code === "KeyR" && e.shiftKey) {
+        e.preventDefault();
         reset();
       }
     },
-    [revealedCount, winnerHighlighted, top3Only, reset]
+    [revealStep, winnerHighlighted, top3Only, reset]
   );
 
   useEffect(() => {
@@ -334,32 +378,39 @@ export default function FinalRevealStage() {
         <span className="fr-status-text">{statusLabel}</span>
       </div>
       <h1 className="fr-title">Final Round</h1>
-      <p className="fr-sub">
-        {cleanUi ? (
-          <>
-            <kbd>空格</kbd>：按顺序揭晓 → 按<strong>最终分</strong>排序发奖 → 仅显示前三 · <kbd>R</kbd> 重置
-          </>
-        ) : (
-          <>
-            空格：按表行顺序逐个揭晓 → 再按<strong>最终分</strong>排序并发奖 → 再按仅显示前三 · <kbd>R</kbd> 重置 ·
-            Round3 宽表：<strong>G</strong> 列有值时优先用表内最终分；否则本页按{" "}
-            <strong>
-              {judgeW}×评委均分+{audienceW}×观众均分
-            </strong>
-            。<strong>B</strong> 观众均分，<strong>C–E</strong> 三评委，<strong>F</strong> 评委均分 · 数据{" "}
-            <code>{range}</code>
-            {frCfg ? "（后台可改）" : "（未连上 API 时用 .env 默认）"} · 选手照与站位见后台「决赛揭晓」阵容（API{" "}
-            <code>/api/stage/final-lineup</code>，失败时回退复活 lineup）
-          </>
-        )}
-      </p>
+      {hintsVisible ? (
+        <p className="fr-sub">
+          {cleanUi ? (
+            <>
+              <kbd>空格</kbd>：先揭晓<strong>后三名</strong>（第六→第四）→ 再<strong>季→亚→冠</strong> → 排序发奖 →
+              仅显示前三（<strong>冠军在上</strong>） · <kbd>Shift+R</kbd> 重置 · <kbd>R</kbd> 显示/隐藏本说明
+            </>
+          ) : (
+            <>
+              空格：先按名次揭晓后三名（第六→第五→第四），再按季→亚→冠揭晓；再按<strong>最终分</strong>排序并发奖 →
+              再按仅显示前三（冠军置顶） · <kbd>Shift+R</kbd> 重置 · <kbd>R</kbd> 显示/隐藏本说明 ·
+              Round3 宽表：<strong>G</strong> 列有值时优先用表内最终分；否则本页按{" "}
+              <strong>
+                {judgeW}×评委均分+{audienceW}×观众均分
+              </strong>
+              。<strong>B</strong> 观众均分，<strong>C–E</strong> 三评委，<strong>F</strong> 评委均分 · 数据{" "}
+              <code>{range}</code>
+              {frCfg ? "（后台可改）" : "（未连上 API 时用 .env 默认）"} · 选手照与站位见后台「决赛揭晓」阵容（API{" "}
+              <code>/api/stage/final-lineup</code>，失败时回退复活 lineup）
+            </>
+          )}
+        </p>
+      ) : null}
       {error && <div className="fr-banner">{error}</div>}
 
-      <div className="fr-contestants" role="list">
+      <div
+        className={`fr-contestants${top3Only ? " fr-contestants--top3" : ""}`}
+        role="list"
+      >
         {visibleOrder.map((slotIndex) => {
           const s = slots[slotIndex];
           if (!s) return null;
-          const revealed = slotIndex < revealedCount;
+          const revealed = revealedSlotSet.has(slotIndex);
           const scoreText = revealed ? `${s.score.toFixed(2)}/10` : "?.??/10";
           const m = medals[slotIndex];
           const breakdown =

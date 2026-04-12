@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchRound2Lineup } from "@/api/client";
+import { useStageHintsVisible } from "@/contexts/StageHintsContext";
 import { useStageCleanUi } from "@/utils/stageCleanUi";
 import type { Round2LineupSlot } from "@/api/types";
 import { parseIntCell } from "@/api/sheetsClient";
@@ -198,6 +199,7 @@ function LeaderboardRow({
 export default function Round2Stage() {
   const cfg = getSheetsPollConfig();
   const cleanUi = useStageCleanUi();
+  const hintsVisible = useStageHintsVisible();
   const { rows, error } = useSheetRangePoll(cfg.round2AudienceRange);
   const listRef = useRef<HTMLOListElement>(null);
   const lastRankById = useRef<Map<string, number>>(new Map());
@@ -260,7 +262,8 @@ export default function Round2Stage() {
         if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
         e.preventDefault();
         setRevival((prev) => advanceRevivalCeremony(prev, sortedRef.current));
-      } else if (e.code === "KeyR") {
+      } else if (e.code === "KeyR" && e.shiftKey) {
+        e.preventDefault();
         resetRevival();
       }
     },
@@ -305,21 +308,25 @@ export default function Round2Stage() {
             实时投票
           </div>
           <h1 className="r2s-title">复活投票 · 声量榜</h1>
-          <p className="r2s-subtitle">
-            {cleanUi ? (
-              <>
-                五人制 · <kbd>空格</kbd> 分步揭晓 · <kbd>R</kbd> 重置 · 实时换位与上升动效
-              </>
-            ) : (
-              <>
-                五人制 · 隐藏态头像是<strong>纯黑</strong>圆；<kbd>空格</kbd>①揭晓<strong>后三名</strong>（身份+票）②前两名只出{" "}
-                <strong>百分比与票数</strong>③两人<strong>身份一起揭晓</strong>④<strong>复活高亮</strong>当前第一名 · <kbd>R</kbd>{" "}
-                重置 · 票数变化时列表仍会<strong>实时换位</strong>（含上升动效），未公开身份仍不显示姓名 · 表姓名为准、头像{" "}
-                <code>GET /api/stage/round2-lineup</code> 或 <code>/stage/round2/*.json</code> ·{" "}
-                <code>{cfg.round2AudienceRange}</code>
-              </>
-            )}
-          </p>
+          {hintsVisible ? (
+            <p className="r2s-subtitle">
+              {cleanUi ? (
+                <>
+                  五人制 · <kbd>空格</kbd> 分步揭晓 · <kbd>Shift+R</kbd> 重置 · <kbd>R</kbd> 显示/隐藏本说明 ·
+                  实时换位与上升动效
+                </>
+              ) : (
+                <>
+                  五人制 · 隐藏态头像是<strong>纯黑</strong>圆；<kbd>空格</kbd>①揭晓<strong>后三名</strong>（身份+票）②前两名只出{" "}
+                  <strong>百分比与票数</strong>③两人<strong>身份一起揭晓</strong>④<strong>复活高亮</strong>当前第一名 ·{" "}
+                  <kbd>Shift+R</kbd> 重置 · <kbd>R</kbd> 显示/隐藏本说明 · 票数变化时列表仍会<strong>实时换位</strong>
+                  （含上升动效），未公开身份仍不显示姓名 · 表姓名为准、头像{" "}
+                  <code>GET /api/stage/round2-lineup</code> 或 <code>/stage/round2/*.json</code> ·{" "}
+                  <code>{cfg.round2AudienceRange}</code>
+                </>
+              )}
+            </p>
+          ) : null}
         </header>
 
         <ol ref={listRef} className="r2s-list" aria-label="复活投票排行">

@@ -285,17 +285,3 @@ export async function saveFinalRevealConfig(body: FinalRevealConfig): Promise<Fi
     audienceWeight: typeof data.audienceWeight === "number" ? data.audienceWeight : body.audienceWeight,
   };
 }
-
-export function displayWebSocketUrl(): string {
-  if (API_BASE) {
-    try {
-      const u = new URL(API_BASE);
-      const proto = u.protocol === "https:" ? "wss:" : "ws:";
-      return `${proto}//${u.host}/ws/display`;
-    } catch {
-      /* use page host */
-    }
-  }
-  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${window.location.host}/ws/display`;
-}

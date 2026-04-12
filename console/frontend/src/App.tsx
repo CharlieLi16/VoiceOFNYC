@@ -4,7 +4,6 @@ import StaffGateLayout from "./layouts/StaffGateLayout";
 import StageLayout from "./layouts/StageLayout";
 import Admin from "./pages/Admin";
 import ContestantSeedEditor from "./pages/ContestantSeedEditor";
-import Display from "./pages/Display";
 import Home from "./pages/Home";
 import StaffLogin from "./pages/StaffLogin";
 import CheckInPage from "./pages/CheckInPage";
@@ -29,7 +28,6 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/contestants-editor" element={<ContestantSeedEditor />} />
-          <Route path="/display" element={<Display />} />
         </Route>
       </Route>
     </Routes>

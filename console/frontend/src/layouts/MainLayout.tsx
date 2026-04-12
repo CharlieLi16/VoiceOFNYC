@@ -31,9 +31,6 @@ export default function MainLayout() {
         >
           选手资料
         </NavLink>
-        <NavLink to="/display" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
-          大屏
-        </NavLink>
         <span className="nav-sep" aria-hidden="true">
           |
         </span>

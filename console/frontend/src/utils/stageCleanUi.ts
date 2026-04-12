@@ -12,6 +12,8 @@ const LS_HINT_KEY = "voiceofnyc-stage-hint";
  * - 控制台：`localStorage.setItem("voiceofnyc-stage-hint","1")`（关闭：`removeItem`）
  *
  * 若已开启 hint 持久化，本次仍想干净：URL 加 `?clean=1` 或 `?present=1` 或 `?kiosk=1`（仅当次生效，不改动 localStorage）。
+ *
+ * 另：在大屏路由按 **R**（无修饰键）可切换副标题/操作说明显隐，与 `?clean=` 等独立。
  */
 export function readStageHintModeFromStorage(): boolean {
   if (typeof window === "undefined") return false;
