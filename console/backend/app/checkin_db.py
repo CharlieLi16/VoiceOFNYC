@@ -137,9 +137,21 @@ def seed_checkin_pool_if_empty() -> int:
         return inserted
 
 
+def _migrate_checkin_fun_response() -> None:
+    """补全趣味问答列（原手机列已弃用，仍保留 phone 列以兼容旧库）。"""
+    with _conn() as c:
+        cols = {row[1] for row in c.execute("PRAGMA table_info(checkin_issued)")}
+        if "fun_response" not in cols:
+            c.execute(
+                "ALTER TABLE checkin_issued ADD COLUMN fun_response TEXT NOT NULL DEFAULT ''"
+            )
+            c.commit()
+
+
 def ensure_checkin_migrations() -> None:
     """启动时调用：补迁移。"""
     _migrate_checkin_issued_pool_id()
+    _migrate_checkin_fun_response()
 
 
 def build_vote_url(base: str, round_id: str, code: str) -> str:
@@ -176,17 +188,17 @@ def allocate_checkin(
     *,
     name: str,
     email: str,
-    phone: str,
+    fun_response: str = "",
     vote_page_base: str,
     vote_round_ids: list[str],
 ) -> tuple[str, list[tuple[str, str]], str]:
     """
-    原子分配一条码并写入 checkin_issued。
+    原子分配一条码并写入 checkin_issued（phone 列已弃用，写入空串）。
     返回 (code, vote_links[(roundId, url)...], vote_url 列存储文本)。
     """
     name = name.strip()
     email_n = email.strip().lower()
-    phone = phone.strip()
+    fun_response = fun_response.strip()
     if not name or not email_n:
         raise ValueError("name 与 email 必填")
     if not vote_round_ids:
@@ -228,10 +240,10 @@ def allocate_checkin(
             stored = format_vote_urls_for_storage(vote_links)
             c.execute(
                 """
-                INSERT INTO checkin_issued (name, email, phone, code, vote_url, pool_id)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO checkin_issued (name, email, phone, fun_response, code, vote_url, pool_id)
+                VALUES (?, ?, '', ?, ?, ?, ?)
                 """,
-                (name, email_n, phone, code, stored, pool_id),
+                (name, email_n, fun_response, code, stored, pool_id),
             )
             c.commit()
             return code, vote_links, stored

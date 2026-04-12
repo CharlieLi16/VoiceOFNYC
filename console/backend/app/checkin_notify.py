@@ -22,7 +22,7 @@ def send_checkin_email(
     )
     parts = [
         f"Hi {name},\n\n",
-        f"感谢签到。你的投票码：{code}\n\n",
+        f"感谢您参加2026 年 由Tandon CSSA 主办的心动的声音 Voice of NYC。\n\n你的投票码是：{code}\n\n",
         "以下为各环节的投票链接（打开即可投票，已含投票码）：\n",
     ]
     for rid, url in vote_links:

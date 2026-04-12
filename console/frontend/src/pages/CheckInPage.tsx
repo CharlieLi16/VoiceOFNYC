@@ -6,7 +6,7 @@ import "@/styles/check-in.css";
 export default function CheckInPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [funResponse, setFunResponse] = useState("");
   const [website, setWebsite] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +17,7 @@ export default function CheckInPage() {
     setError(null);
     setBusy(true);
     try {
-      await submitCheckin({ name, email, phone, website });
+      await submitCheckin({ name, email, funResponse, website });
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "提交失败，请稍后再试。");
@@ -50,7 +50,7 @@ export default function CheckInPage() {
       <div className="staff-login-card check-in-card">
         <h1 className="staff-login-title">现场签到</h1>
         <p className="check-in-intro">
-          填写信息后，系统将分配投票码，并把<strong>各轮投票链接</strong>发送到你填写的<strong>邮箱</strong>。手机号可选，用于现场存档。
+          填写信息后，系统将分配投票码，并把<strong>各轮投票链接</strong>发送到你填写的<strong>邮箱</strong>。
         </p>
         <form className="staff-login-form check-in-form" onSubmit={onSubmit}>
           <label className="staff-login-label">
@@ -77,15 +77,16 @@ export default function CheckInPage() {
               placeholder="用于接收投票链接"
             />
           </label>
-          <label className="staff-login-label">
-            手机号
-            <input
-              name="phone"
-              type="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(ev) => setPhone(ev.target.value)}
-              placeholder="含国家区号更佳，如 +1…"
+          <label className="staff-login-label check-in-fun-label">
+            你觉得谁会夺冠？你最期待什么？<span className="subtle">（选填）</span>
+            <textarea
+              name="funResponse"
+              className="check-in-fun-field"
+              rows={3}
+              maxLength={500}
+              value={funResponse}
+              onChange={(ev) => setFunResponse(ev.target.value)}
+              placeholder="随便聊聊～"
             />
           </label>
           <label className="check-in-honeypot" aria-hidden="true">

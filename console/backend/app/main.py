@@ -45,7 +45,7 @@ def _load_env_manual(path: Path) -> None:
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app import checkin_db
 from app import checkin_notify
@@ -593,10 +593,12 @@ def _checkin_rate_ok(ip: str, limit: int = 10, window: float = 60.0) -> bool:
 
 
 class CheckinBody(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+
     name: str = Field(..., min_length=1, max_length=120)
     email: EmailStr
-    phone: str = Field(default="", max_length=40)
     website: str = Field(default="", max_length=500)
+    fun_response: str = Field(default="", max_length=500, alias="funResponse")
 
 
 @app.post("/api/checkin")
@@ -617,7 +619,7 @@ async def api_checkin(request: Request, body: CheckinBody) -> JSONResponse:
         code, vote_links, stored_vote_urls = checkin_db.allocate_checkin(
             name=body.name,
             email=str(body.email),
-            phone=body.phone or "",
+            fun_response=(body.fun_response or "").strip(),
             vote_page_base=base,
             vote_round_ids=round_ids,
         )
@@ -634,7 +636,7 @@ async def api_checkin(request: Request, body: CheckinBody) -> JSONResponse:
         ts,
         body.name.strip(),
         str(body.email).strip(),
-        (body.phone or "").strip(),
+        (body.fun_response or "").strip(),
         code,
         stored_vote_urls,
     ]

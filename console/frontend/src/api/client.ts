@@ -32,7 +32,8 @@ export type CheckinResponse = {
 export async function submitCheckin(body: {
   name: string;
   email: string;
-  phone: string;
+  /** 趣味问答，选填 */
+  funResponse?: string;
   website?: string;
 }): Promise<CheckinResponse> {
   const res = await fetch(apiUrl("/api/checkin"), {
@@ -41,7 +42,7 @@ export async function submitCheckin(body: {
     body: JSON.stringify({
       name: body.name,
       email: body.email,
-      phone: body.phone ?? "",
+      funResponse: body.funResponse ?? "",
       website: body.website ?? "",
     }),
   });

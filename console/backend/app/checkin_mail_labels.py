@@ -2,14 +2,15 @@
 from __future__ import annotations
 
 # roundId -> (中文标题, 副标题一行；副标题可为 None)
-# 初赛对阵默认与 public/vote/vote-config.js round1PkByRoundId 的 label 一致；请按现场改姓名与《歌名》。
+# 初赛五组对阵与 public/vote/vote-config.js round1PkByRoundId（选手 1～10 /img）一致；
+# 每人第一轮曲目与 public/data/seed-contestants.json 的 song 字段一致。
 _CHECKIN_ROUND_MAIL: dict[str, tuple[str, str | None]] = {
-    "round1_pk_1": ("初赛第一轮", "选手 1 vs 选手 2 · 《请改为本组曲目》"),
-    "round1_pk_2": ("初赛第二轮", "选手 3 vs 选手 4 · 《请改为本组曲目》"),
-    "round1_pk_3": ("初赛第三轮", "选手 5 vs 选手 6 · 《请改为本组曲目》"),
-    "round1_pk_4": ("初赛第四轮", "选手 7 vs 选手 8 · 《请改为本组曲目》"),
-    "round1_pk_5": ("初赛第五轮", "选手 9 vs 选手 10 · 《请改为本组曲目》"),
-    "round2_revival": ("复活赛", None),
+    "round1_pk_1": ("初赛第一轮", "Siwei《可乐》 vs 蔡彦培《相爱后动物感伤》"),
+    "round1_pk_2": ("初赛第二轮", "Julian Zhu《动物世界》 vs Mandy《你把我灌醉》"),
+    "round1_pk_3": ("初赛第三轮", "赵星童《等待》 vs coco林小妍《失落沙洲》"),
+    "round1_pk_4": ("初赛第四轮", "吴子涵《嘉宾》 vs Timmy Zihan Ma《Try Everything》"),
+    "round1_pk_5": ("初赛第五轮", "刘佳希《Dear Friend》 vs Hazel Jia《I wish you love》"),
+    "round2_revival": ("复活投票", None),
     "final_perf_1": ("决赛第一轮", None),
     "final_perf_2": ("决赛第二轮", None),
     "final_perf_3": ("决赛第三轮", None),
