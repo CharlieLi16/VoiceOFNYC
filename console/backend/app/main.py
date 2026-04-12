@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import time
 from contextlib import asynccontextmanager
@@ -53,6 +54,12 @@ from app import db
 from app import sheets_oauth
 from app.ws_hub import hub
 
+logger = logging.getLogger(__name__)
+
+
+def _env_truthy(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 _env_file = BACKEND_DIR / ".env"
 if load_dotenv is not None:
@@ -68,6 +75,7 @@ MYDATA_JSON = REPO_ROOT / "assets" / "js" / "mydata.json"
 async def lifespan(app: FastAPI):
     db.init_db()
     checkin_db.init_checkin_tables()
+    sheets_oauth.ensure_oauth_store()
     checkin_db.ensure_checkin_migrations()
     checkin_db.seed_checkin_pool_if_empty()
     if db.contestant_count() == 0 and MYDATA_JSON.is_file():
@@ -400,25 +408,22 @@ def sheets_oauth_callback(
     return JSONResponse(
         {
             "ok": True,
-            "message": "已保存令牌。可调用 POST /api/sheets/round1-votes 等写入接口；令牌文件勿提交。",
+            "message": "已保存令牌（SQLite + 本地镜像）。可调用 POST /api/sheets/round1-votes 等写入接口；勿将 data/*.db 或 token 提交仓库。",
         }
     )
 
 
 @app.get("/api/sheets/oauth/status")
 def sheets_oauth_status() -> JSONResponse:
-    path = sheets_oauth.TOKEN_FILE
-    if not path.is_file():
+    raw = sheets_oauth.oauth_token_info()
+    if not raw:
         return JSONResponse({"configured": False})
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return JSONResponse({"configured": False, "error": "token 文件损坏"})
     return JSONResponse(
         {
             "configured": bool(raw.get("refresh_token") or raw.get("token")),
             "has_refresh_token": bool(raw.get("refresh_token")),
             "sheet_id_set": bool(sheets_oauth.spreadsheet_id()),
+            "storage": "sqlite+sheets_oauth_token",
         }
     )
 
@@ -643,8 +648,16 @@ async def api_checkin(request: Request, body: CheckinBody) -> JSONResponse:
     try:
         sheets_oauth.append_rows(tab, [row])
     except Exception as e:
-        checkin_db.revoke_issued_by_code(code)
-        raise HTTPException(502, f"写入表格失败: {e}") from e
+        if _env_truthy("CHECKIN_BEST_EFFORT_SHEET"):
+            logger.warning(
+                "checkin: Google Sheet append failed but CHECKIN_BEST_EFFORT_SHEET=1; continuing to email. tab=%s err=%s",
+                tab,
+                e,
+                exc_info=True,
+            )
+        else:
+            checkin_db.revoke_issued_by_code(code)
+            raise HTTPException(502, f"写入表格失败: {e}") from e
 
     try:
         checkin_notify.send_checkin_email(

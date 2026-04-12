@@ -61,7 +61,8 @@ window.__VOTE_PAGE_CONFIG = {
   /** 是否显示投票码输入框（false 时需 Secret VOTE_CODES=DISABLED，否则服务端会拒写入表格） */
   requireVoteCode: true,
   /**
-   * 联调用：与 Firebase `VOTE_TEST_CODE` 一致时显示「填入测试码」，且不消耗 Firestore 真实票。
+   * 联调用：与 Firebase `VOTE_TEST_CODE` 一致；Callable 不扣真实票。
+   * 「填入测试码」按钮仅当本浏览器已在控台 /login 工作人员登录后显示（同源）。
    * 正式现场改回 ""（空字符串）。
    */
   testVoteCode: "cssa2026",

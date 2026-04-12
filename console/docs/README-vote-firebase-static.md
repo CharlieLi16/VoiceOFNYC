@@ -63,9 +63,9 @@ npx firebase-tools@latest deploy --only functions,firestore:rules
 
 ### 投票页（`vote-config.js`）
 
-- 字段 **`testVoteCode`**：须与云端 **`VOTE_TEST_CODE` 字符串一致**，否则前端不会显示联调辅助，且用户手输的码也无法与云端规则对齐。
-- 非空时，[`vote.html`](../frontend/public/vote/vote.html) 在投票码区域显示 **「填入测试码」** 按钮，并有一段简短说明。
-- **URL 预填**：`?testVote=1` 或 `?test=1` 会在已配置 `testVoteCode` 时自动把该码填入输入框（与 `?voteCode=` 不同，后者用于真实个人码）。
+- 字段 **`testVoteCode`**：须与云端 **`VOTE_TEST_CODE` 字符串一致**；Callable 侧仍以此验票。
+- **「填入测试码」按钮与 `?testVote=1` 预填**仅当：配置了 `testVoteCode`，且**本浏览器已在控台 `/login` 完成工作人员登录**（与 `src/auth/staffPortal.ts` 写入的 `sessionStorage` / `localStorage` 同源）。观众直接打开投票页不会看到按钮；工作人员可先在同一站点登录控台，再打开或刷新投票页联调。
+- **URL 预填**：`?testVote=1` 或 `?test=1` 仅在上述工作人员会话存在时生效（与 `?voteCode=` 不同，后者用于真实个人码）。
 
 ### 正式现场前必做
 

@@ -3,6 +3,14 @@ import { Link } from "react-router-dom";
 import { submitCheckin } from "@/api/client";
 import "@/styles/check-in.css";
 
+function formatCheckinError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : "提交失败，请稍后再试。";
+  if (raw.includes("写入表格失败")) {
+    return `${raw} 请联系现场工作人员，或稍后再试。（后台需完成 Google 表格 OAuth、检查表 Tab 与共享权限。）`;
+  }
+  return raw;
+}
+
 export default function CheckInPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -20,7 +28,7 @@ export default function CheckInPage() {
       await submitCheckin({ name, email, funResponse, website });
       setDone(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "提交失败，请稍后再试。");
+      setError(formatCheckinError(err));
     } finally {
       setBusy(false);
     }

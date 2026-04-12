@@ -1,4 +1,8 @@
-"""Google Sheets OAuth（用户授权）+ 写入。令牌存 backend/data/google_oauth_token.json。"""
+"""Google Sheets OAuth（用户授权）+ 写入。
+
+主存储：与选手/签到相同的 SQLite（console/data/voiceofnyc.db）内表 sheets_oauth_token，
+便于 Railway 等环境只挂一卷即可持久化。仍镜像写入 backend/data/google_oauth_token.json 便于本地查看。
+"""
 from __future__ import annotations
 
 import json
@@ -12,6 +16,8 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+
+from app.db import _conn  # noqa: SLF001 与 checkin 等同库
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
@@ -104,22 +110,83 @@ def exchange_code(code: str, code_verifier: str | None = None) -> None:
     save_credentials(flow.credentials)
 
 
+def ensure_oauth_store() -> None:
+    """创建 OAuth 凭证表（启动时调用一次即可）。"""
+    with _conn() as c:
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sheets_oauth_token (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                creds_json TEXT NOT NULL
+            )
+            """
+        )
+        c.commit()
+
+
+def _save_token_json_to_db(raw: str) -> None:
+    ensure_oauth_store()
+    with _conn() as c:
+        c.execute(
+            """
+            INSERT INTO sheets_oauth_token (id, creds_json)
+            VALUES (1, ?)
+            ON CONFLICT(id) DO UPDATE SET creds_json = excluded.creds_json
+            """,
+            (raw,),
+        )
+        c.commit()
+
+
+def _read_token_json() -> str | None:
+    ensure_oauth_store()
+    with _conn() as c:
+        row = c.execute("SELECT creds_json FROM sheets_oauth_token WHERE id = 1").fetchone()
+        if row and row[0]:
+            return str(row[0])
+    if TOKEN_FILE.is_file():
+        try:
+            raw = TOKEN_FILE.read_text(encoding="utf-8")
+            json.loads(raw)
+            _save_token_json_to_db(raw)
+            return raw
+        except (json.JSONDecodeError, OSError, ValueError):
+            pass
+    return None
+
+
 def save_credentials(creds: Credentials) -> None:
+    raw = creds.to_json()
+    _save_token_json_to_db(raw)
     TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
-    TOKEN_FILE.write_text(creds.to_json(), encoding="utf-8")
+    TOKEN_FILE.write_text(raw, encoding="utf-8")
 
 
 def load_credentials() -> Credentials | None:
-    if not TOKEN_FILE.is_file():
+    raw = _read_token_json()
+    if not raw:
         return None
     try:
-        creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+        info = json.loads(raw)
+        creds = Credentials.from_authorized_user_info(info, SCOPES)
     except (json.JSONDecodeError, ValueError):
         return None
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
         save_credentials(creds)
     return creds if creds.valid else None
+
+
+def oauth_token_info() -> dict[str, Any] | None:
+    """供 /api/sheets/oauth/status 使用；不触发 refresh。"""
+    raw = _read_token_json()
+    if not raw:
+        return None
+    try:
+        d = json.loads(raw)
+        return d if isinstance(d, dict) else None
+    except json.JSONDecodeError:
+        return None
 
 
 def sheets_service():

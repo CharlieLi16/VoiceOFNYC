@@ -31,6 +31,18 @@ const rootEl = document.getElementById("vp-root");
 const codeWrap = document.getElementById("vp-code-wrap");
 const codeInput = document.getElementById("vp-code");
 
+/** 与 `src/auth/staffPortal.ts` 中 SESSION_KEY / PERSIST_KEY 一致；仅在控台 `/login` 工作人员登录后写入 */
+function isStaffPortalAuthedInBrowser() {
+  try {
+    return (
+      sessionStorage.getItem("voiceofnyc-staff-portal") === "1" ||
+      localStorage.getItem("voiceofnyc-staff-portal-persist") === "1"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function showBanner(text, ok = false) {
   if (!bannerEl) return;
   bannerEl.hidden = false;
@@ -396,7 +408,12 @@ async function init() {
   }
 
   const testCodeRaw = String(cfg?.testVoteCode ?? "").trim();
-  if (testCodeRaw && codeWrap && displayCfg.requireVoteCode !== false) {
+  const showTestVoteUi =
+    testCodeRaw &&
+    codeWrap &&
+    displayCfg.requireVoteCode !== false &&
+    isStaffPortalAuthedInBrowser();
+  if (showTestVoteUi) {
     try {
       const q = new URLSearchParams(window.location.search);
       if ((q.get("testVote") === "1" || q.get("test") === "1") && codeInput) {
@@ -422,7 +439,7 @@ async function init() {
     const note = document.createElement("p");
     note.className = "vp-test-code-note";
     note.textContent =
-      "测试码不消耗真实票；请与 Firebase 环境参数 VOTE_TEST_CODE 一致。正式现场请清空 testVoteCode。";
+      "测试码不消耗真实票；须与 Firebase VOTE_TEST_CODE 一致。本按钮仅工作人员在控台登录同一浏览器后可见。";
     codeWrap.appendChild(note);
   }
 
